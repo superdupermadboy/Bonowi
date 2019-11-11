@@ -176,7 +176,7 @@ void EXTI0_1_IRQHandler(void)
 			select++;
 		}
 		debounce = 100;
-		systick = 500;
+		//systick = 500;
 		
 
 	}

@@ -57,6 +57,9 @@ WWDG_HandleTypeDef hwwdg;
 uint16_t mainstate;
 	uint32_t duty[4] 				= {0,250,500,1000};		//500 bei prescaler 50 und 1000period = strobo
 	uint32_t prescaler[4] 		= {1,100,1,50};
+	
+uint16_t reset_lamp = 0;
+	
 uint16_t adccount;
 uint32_t	ADC_Value[ADC_CONVERTIONCOUNT];
 float VBat,VRef,VTempPCB,VTempMCU,VSense;
@@ -337,7 +340,26 @@ int main(void)
 		HAL_WWDG_Refresh(&hwwdg);
 		
 		
-		
+		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
+		{
+
+				if (systick < 1) {
+					systick = 500;
+
+					reset_lamp++;
+					
+					
+					if (reset_lamp > 3)
+					{
+						mainstate = 20;
+						select = 0;
+					}
+				}
+		} 
+		else
+		{
+			reset_lamp = 0;
+		}
 		
 //		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
 //		{
