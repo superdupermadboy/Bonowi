@@ -63,6 +63,7 @@ extern UART_HandleTypeDef huart2;
 
 	uint16_t select = 0;
 	uint16_t debounce = 0;
+	uint16_t resetSystick = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -129,6 +130,10 @@ void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
+	if (resetSystick) {
+		resetSystick--;
+	}
+	
 	if ( systick )
 	{
 		systick--;
@@ -176,7 +181,7 @@ void EXTI0_1_IRQHandler(void)
 			select++;
 		}
 		debounce = 100;
-		//systick = 500;
+		 systick = 500;
 		
 
 	}

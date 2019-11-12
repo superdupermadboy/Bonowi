@@ -81,6 +81,7 @@ static void MX_TIM2_Init(void);
 /* USER CODE BEGIN 0 */
 extern 	uint16_t	systick;
 extern uint16_t select;
+extern uint16_t resetSystick;
 uint16_t select_old;
 
 
@@ -243,98 +244,10 @@ int main(void)
 					}
 					else
 					{
-						mainstate = 30;
+						mainstate = 20;
 					}
 				}
 				break;
-				
-				
-				
-				
-				
-				// ADC:
-			case 30:
-				
-				if ( HAL_ADCEx_Calibration_Start(&hadc,ADC_SINGLE_ENDED) == HAL_OK )		// im Test ob überhaupt notwendig
-				{
-					HAL_GPIO_WritePin(O_VBat_En_GPIO_Port,O_VBat_En_Pin,GPIO_PIN_RESET);
-					mainstate = 32;
-				}				
-				break;
-				
-				
-
-			case 32:
-
-				if ( HAL_ADC_Start(&hadc) == HAL_OK )
-				{
-					adccount = 0;
-					mainstate = 34;
-				}				
-				break;				
-				
-				
-				
-			case 34:
-				
-				switch ( HAL_ADC_PollForConversion(&hadc,1000) )
-				{
-					
-					case HAL_OK:
-					
-						ADC_Value[adccount] = HAL_ADC_GetValue(&hadc);
-						adccount++;
-						if ( adccount >= ADC_CONVERTIONCOUNT )
-						{
-							mainstate = 36;
-						}
-						break;
-						
-					
-					case HAL_BUSY:
-						
-						break;
-					
-					
-					default:
-						
-						mainstate = 36;
-						
-						
-				}
-				break;
-				
-				
-			case 36:
-				
-				if ( HAL_ADC_Stop(&hadc) == HAL_OK )
-				{
-					//HAL_GPIO_WritePin(O_VBat_En_GPIO_Port,O_VBat_En_Pin,GPIO_PIN_SET);
-					
-					VBat = (float)ADC_Value[0]*3.3f / 4096 * 2;
-					VSense = (float)ADC_Value[1]*3.3f / 4096;
-					VTempPCB = (float)ADC_Value[2]*3.3f / 4096;					
-					VTempMCU = (float)ADC_Value[3]*3.3f / 4096;
-					VRef = (float)ADC_Value[4]*3.3f / 4096;
-					
-					
-					
-					mainstate = 20;
-				}				
-				break;
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-
-			
 		}
 		
 		HAL_WWDG_Refresh(&hwwdg);
@@ -343,16 +256,18 @@ int main(void)
 		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
 		{
 
-				if (systick < 1) {
-					systick = 500;
+				if (resetSystick < 1) {
+					resetSystick = 500;
 
 					reset_lamp++;
 					
 					
 					if (reset_lamp > 3)
 					{
+						reset_lamp = 0;
 						mainstate = 20;
 						select = 0;
+						HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);
 					}
 				}
 		} 
