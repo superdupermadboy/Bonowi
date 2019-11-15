@@ -55,7 +55,7 @@ WWDG_HandleTypeDef hwwdg;
 	  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 uint16_t mainstate;
-	uint32_t duty[4] 				= {0,250,500,1000};		//500 bei prescaler 50 und 1000period = strobo
+	uint32_t duty[5] 				= {0,250,500,1000,400};		//500 bei prescaler 50 und 1000period = strobo
 	uint32_t prescaler[4] 		= {1,100,1,50};
 	
 uint16_t reset_lamp = 0;
@@ -84,9 +84,10 @@ extern uint16_t select;
 extern uint16_t resetSystick;
 extern uint16_t lampToHot;
 extern uint16_t reseted;
+extern uint16_t strobo;
 uint16_t select_old;
 uint16_t firstTime;
-
+uint16_t stroboOff;
 
 
 /* USER CODE END 0 */
@@ -147,6 +148,7 @@ int main(void)
 				select = select_old = 0;													// Dadurch erkenne ich einen ausgelößten Watchdog
 				mainstate = 20;
 				lampToHot = firstTime = 0;
+				stroboOff = strobo = 0;
 				
 				break;
 			
@@ -216,14 +218,18 @@ int main(void)
 				sConfigOC.Pulse = duty[select];
 				sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 				sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+				
+				
+				if (stroboOff && select == 4) {
+						sConfigOC.Pulse = duty[0];
+				}
+				
 				if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
 				{
 					Error_Handler();
 				}	
 //				HAL_TIM_MspPostInit(&htim2);
-				
-				
-				
+
 				HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
 				select_old = select;
 				mainstate = 200;		
@@ -251,16 +257,26 @@ int main(void)
 					{
 						mainstate = 20;
 						
-//						if (select == 3 && lampToHot == 0) {
-//							if (firstTime < 4) {
-//								firstTime++;
-//								lampToHot = 60000;
-//							} else {
-//								select = 0;
-//								mainstate = 100;
-//								firstTime = 0;
-//							}
-//						}
+						if (select == 3 && lampToHot == 0) {
+							if (firstTime < 5) {
+								firstTime++;
+								lampToHot = 5000;
+							} else {
+								select = 0;
+								mainstate = 100;
+								firstTime = 0;
+							}
+						}
+						
+						if (select == 4 && strobo == 0) {
+							strobo = 30;
+							if (stroboOff) {
+								stroboOff = 0;
+							} else {
+								stroboOff = 1;
+							}
+						}
+						
 						if (select == 0) {
 							lampToHot = 0;
 							firstTime = 0;
