@@ -64,6 +64,8 @@ extern UART_HandleTypeDef huart2;
 	uint16_t select = 0;
 	uint16_t debounce = 0;
 	uint16_t resetSystick = 0;
+	uint16_t lampToHot = 3000;
+	uint16_t reseted = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -144,6 +146,10 @@ void SysTick_Handler(void)
 		debounce--;
 	}
 	
+	if ( lampToHot )
+	{
+		lampToHot--;
+	}
 	
 	//HAL_GPIO_TogglePin(O_LED_PWM_GPIO_Port,O_LED_PWM_Pin);
   /* USER CODE END SysTick_IRQn 0 */
@@ -172,13 +178,17 @@ void EXTI0_1_IRQHandler(void)
   /* USER CODE BEGIN EXTI0_1_IRQn 1 */
 	if ( debounce == 0 )
 	{
-		if ( select == 3 )
+		if ( select >= 3 )
 		{
 			select = 0;
 		}
 		else
 		{
-			select++;
+			if (reseted) {
+				reseted = 0;
+			} else {
+				select++;			
+			}
 		}
 		debounce = 100;
 		 systick = 500;

@@ -82,8 +82,10 @@ static void MX_TIM2_Init(void);
 extern 	uint16_t	systick;
 extern uint16_t select;
 extern uint16_t resetSystick;
+extern uint16_t lampToHot;
+extern uint16_t reseted;
 uint16_t select_old;
-
+uint16_t firstTime;
 
 
 
@@ -144,6 +146,7 @@ int main(void)
 				systick = 5000;											// kein debuggen möglich, schafft man nicht anzuschalten bevor er in den sleep geschickt wird
 				select = select_old = 0;													// Dadurch erkenne ich einen ausgelößten Watchdog
 				mainstate = 20;
+				lampToHot = firstTime = 0;
 				
 				break;
 			
@@ -232,7 +235,9 @@ int main(void)
 				
 				if ( select == 0 &&  systick == 0 )
 				{
-					mainstate = 10;					
+					mainstate = 10;
+					lampToHot = 0;
+					firstTime = 0;
 				}
 				else
 				{
@@ -245,6 +250,21 @@ int main(void)
 					else
 					{
 						mainstate = 20;
+						
+//						if (select == 3 && lampToHot == 0) {
+//							if (firstTime < 4) {
+//								firstTime++;
+//								lampToHot = 60000;
+//							} else {
+//								select = 0;
+//								mainstate = 100;
+//								firstTime = 0;
+//							}
+//						}
+						if (select == 0) {
+							lampToHot = 0;
+							firstTime = 0;
+						}
 					}
 				}
 				break;
@@ -267,7 +287,8 @@ int main(void)
 						reset_lamp = 0;
 						mainstate = 20;
 						select = 0;
-						HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);
+						reseted = 1;
+						//HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);
 					}
 				}
 		} 
