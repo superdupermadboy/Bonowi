@@ -63,8 +63,12 @@ void Error_Handler(void);
 #define BUTTON_Pin GPIO_PIN_0
 #define BUTTON_GPIO_Port GPIOA
 #define BUTTON_EXTI_IRQn EXTI0_1_IRQn
+#define LED_PWM_Pin GPIO_PIN_1
+#define LED_PWM_GPIO_Port GPIOA
 #define LAMP_V_Pin GPIO_PIN_7
 #define LAMP_V_GPIO_Port GPIOA
+#define STATUS_LED_Pin GPIO_PIN_1
+#define STATUS_LED_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
