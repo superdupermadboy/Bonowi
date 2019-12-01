@@ -1,0 +1,27 @@
+--cpu Cortex-M0+
+"bonowi_v2\startup_stm32l011xx.o"
+"bonowi_v2\main.o"
+"bonowi_v2\stm32l0xx_it.o"
+"bonowi_v2\stm32l0xx_hal_msp.o"
+"bonowi_v2\stm32l0xx_hal_adc.o"
+"bonowi_v2\stm32l0xx_hal_adc_ex.o"
+"bonowi_v2\stm32l0xx_hal.o"
+"bonowi_v2\stm32l0xx_hal_i2c.o"
+"bonowi_v2\stm32l0xx_hal_i2c_ex.o"
+"bonowi_v2\stm32l0xx_hal_rcc.o"
+"bonowi_v2\stm32l0xx_hal_rcc_ex.o"
+"bonowi_v2\stm32l0xx_hal_flash_ramfunc.o"
+"bonowi_v2\stm32l0xx_hal_flash.o"
+"bonowi_v2\stm32l0xx_hal_flash_ex.o"
+"bonowi_v2\stm32l0xx_hal_gpio.o"
+"bonowi_v2\stm32l0xx_hal_dma.o"
+"bonowi_v2\stm32l0xx_hal_pwr.o"
+"bonowi_v2\stm32l0xx_hal_pwr_ex.o"
+"bonowi_v2\stm32l0xx_hal_cortex.o"
+"bonowi_v2\stm32l0xx_hal_tim.o"
+"bonowi_v2\stm32l0xx_hal_tim_ex.o"
+"bonowi_v2\system_stm32l0xx.o"
+--library_type=microlib --strict --scatter "Bonowi_v2\Bonowi_v2.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "Bonowi_v2.map" -o Bonowi_v2\Bonowi_v2.axf

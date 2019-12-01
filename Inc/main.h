@@ -60,24 +60,11 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ADC_CONVERTIONCOUNT 5
-#define ID_Key_Pin GPIO_PIN_0
-#define ID_Key_GPIO_Port GPIOA
-#define ID_Key_EXTI_IRQn EXTI0_1_IRQn
-#define O_LED_PWM_Pin GPIO_PIN_1
-#define O_LED_PWM_GPIO_Port GPIOA
-#define ID_Charge_En_Pin GPIO_PIN_4
-#define ID_Charge_En_GPIO_Port GPIOA
-#define IA_VBat_Pin GPIO_PIN_5
-#define IA_VBat_GPIO_Port GPIOA
-#define IA_LED_Current_Pin GPIO_PIN_6
-#define IA_LED_Current_GPIO_Port GPIOA
-#define IA_LED_Temperature_Pin GPIO_PIN_7
-#define IA_LED_Temperature_GPIO_Port GPIOA
-#define O_StatusLED_Pin GPIO_PIN_1
-#define O_StatusLED_GPIO_Port GPIOB
-#define O_VBat_En_Pin GPIO_PIN_6
-#define O_VBat_En_GPIO_Port GPIOB
+#define BUTTON_Pin GPIO_PIN_0
+#define BUTTON_GPIO_Port GPIOA
+#define BUTTON_EXTI_IRQn EXTI0_1_IRQn
+#define LAMP_V_Pin GPIO_PIN_7
+#define LAMP_V_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
