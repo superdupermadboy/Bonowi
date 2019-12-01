@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/marku/Desktop/Project/Bonowi_v2/Bonowi_v2/Inc
+HeaderPath=C:/Users/Markus/Desktop/Projects/Bonowi/Inc
 HeaderFiles=stm32l0xx_it.h;stm32l0xx_hal_conf.h;main.h;
-SourcePath=C:/Users/marku/Desktop/Project/Bonowi_v2/Bonowi_v2/Src
+SourcePath=C:/Users/Markus/Desktop/Projects/Bonowi/Src
 SourceFiles=stm32l0xx_it.c;stm32l0xx_hal_msp.c;main.c;
 
 [PreviousLibFiles]

@@ -87,7 +87,7 @@
   *        This value is the default MSI range value after Reset.
   */
 #if !defined  (MSI_VALUE)
-  #define MSI_VALUE    ((uint32_t)131072U) /*!< Value of the Internal oscillator in Hz*/
+  #define MSI_VALUE    ((uint32_t)262144U) /*!< Value of the Internal oscillator in Hz*/
 #endif /* MSI_VALUE */
    
 /**

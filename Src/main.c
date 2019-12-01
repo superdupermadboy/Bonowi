@@ -122,6 +122,7 @@ int main(void)
 	
 	// ADC stuff	
 	lampTemperature = 0;
+	select = select_old = 1;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -141,12 +142,10 @@ int main(void)
 		HAL_ADC_Stop(&hadc);
 
 		if (lampTemperature > 1600) {
-			cap = 0;
-		} else if (lampTemperature > 1500) {
 			cap = 1;
-		} else if (lampTemperature > 1400) {
+		} else if (lampTemperature > 1500) {
 			cap = 2;
-		} else {
+		} else{
 			cap = 3;
 		}
 		
@@ -154,14 +153,21 @@ int main(void)
 			select = cap;
 		}
 		
+		if (platineReseted == 2) {
+			platineReseted = 0;
+			select = 0;
+			select_old = 1;
+		}
+		
 		if (select_old != select) {
 			select_old = select;
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 
-			if (select == 0) {
+			if (select == 0 && !platineReseted) {
 				
-				//HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
-				//select = 1;
+				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+				
+				select = 1;
 			} else {
 				sConfigOC.Pulse = duty[select];
 				
@@ -204,12 +210,10 @@ void SystemClock_Config(void)
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_MSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_1;
+  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_2;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -251,7 +255,7 @@ static void MX_ADC_Init(void)
   */
   hadc.Instance = ADC1;
   hadc.Init.OversamplingMode = DISABLE;
-  hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV1;
   hadc.Init.Resolution = ADC_RESOLUTION_12B;
   hadc.Init.SamplingTime = ADC_SAMPLETIME_12CYCLES_5;
   hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;

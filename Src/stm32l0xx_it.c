@@ -158,12 +158,12 @@ void EXTI0_1_IRQHandler(void)
 		
 		if (select >= 3 || select >= cap || platineReseted) {
 			select = 0;
-			platineReseted = 0;
+			platineReseted = 2;
 		} else {
 			select++;
 		}
 		
-		debounce = 100;
+		debounce = 200;
 	}
   /* USER CODE END EXTI0_1_IRQn 1 */
 }
