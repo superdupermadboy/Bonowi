@@ -47,14 +47,21 @@ ADC_HandleTypeDef hadc;
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+
+// Mode changing variables
 extern uint16_t select;
-uint16_t platineReseted;
 uint16_t select_old;
-uint16_t resetPlatine;
 TIM_OC_InitTypeDef sConfigOC = {0};
 uint16_t duty[4] = {0, 250, 500, 600};
 uint16_t cap;
+
+//Reset stuff
+uint16_t platineReseted;
+uint16_t resetPlatine;
+
+//ADC variables
 uint32_t lampTemperature;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -122,7 +129,7 @@ int main(void)
 	
 	// ADC stuff	
 	lampTemperature = 0;
-	select = select_old = 1;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -141,6 +148,7 @@ int main(void)
 		}
 		HAL_ADC_Stop(&hadc);
 
+		// Depending on the Temperature set a maximum cap for the LED power
 		if (lampTemperature > 1600) {
 			cap = 1;
 		} else if (lampTemperature > 1500) {
@@ -153,12 +161,14 @@ int main(void)
 			select = cap;
 		}
 		
+		// Second status of the reset, option, so the stopmode will be engaged
 		if (platineReseted == 2) {
 			platineReseted = 0;
 			select = 0;
 			select_old = 1;
 		}
 		
+		// The main part of changing the light
 		if (select_old != select) {
 			select_old = select;
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);

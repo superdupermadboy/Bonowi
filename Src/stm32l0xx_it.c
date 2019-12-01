@@ -154,8 +154,11 @@ void EXTI0_1_IRQHandler(void)
   /* USER CODE END EXTI0_1_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
   /* USER CODE BEGIN EXTI0_1_IRQn 1 */
+	
+	
 	if (!debounce) {
-		
+	
+		// Wrap if highest led power is enabled OR the Led has reached is cap because of temperetaure OR the platine was reseted
 		if (select >= 3 || select >= cap || platineReseted) {
 			select = 0;
 			platineReseted = 2;
