@@ -160,6 +160,10 @@ int main(void)
 			HAL_NVIC_SystemReset();
 		}
 		
+		if (usb_mode && (HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_RESET)) {
+			usb_mode = 0;
+		}
+		
 		// Temperature monitoring
 		HAL_ADC_Start(&hadc);
 		if (HAL_ADC_PollForConversion(&hadc, 1000) == HAL_OK) {
