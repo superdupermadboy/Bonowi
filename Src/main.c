@@ -62,6 +62,9 @@ uint16_t resetPlatine;
 //ADC variables
 uint32_t lampTemperature;
 
+//USART variables
+uint16_t usb_mode;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -129,7 +132,17 @@ int main(void)
 	
 	// ADC stuff	
 	lampTemperature = 0;
-
+	
+	//USART stuff
+	if (HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) {
+		usb_mode = 1;
+	} else {
+		usb_mode = 0;
+	}
+	
+	// Comment this out, if processor should reset the whole time
+	// usb_mode = 0;
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -140,6 +153,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		
+		// Reset the system if usb is plugged in
+		// Also check if the System was reset via usb_mode and the cable is plugged in from the beginning
+		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) && !usb_mode) {
+			HAL_NVIC_SystemReset();
+		}
 		
 		// Temperature monitoring
 		HAL_ADC_Start(&hadc);
@@ -169,7 +188,7 @@ int main(void)
 		}
 		
 		// The main part of changing the light
-		if (select_old != select) {
+		if (select_old != select) {			
 			select_old = select;
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 
@@ -382,6 +401,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BUTTON_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : CHARGE_Pin */
+  GPIO_InitStruct.Pin = CHARGE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(CHARGE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : STATUS_LED_Pin */
   GPIO_InitStruct.Pin = STATUS_LED_Pin;
