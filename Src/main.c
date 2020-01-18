@@ -65,10 +65,9 @@ TIM_HandleTypeDef htim2;
 // Mode changing variables
 extern uint16_t select;
 uint16_t select_old;
-uint16_t strobeOn = 0;
-uint16_t changeStrobe = 0;
+uint16_t strobeOn;
+uint16_t changeStrobe;
 TIM_OC_InitTypeDef sConfigOC = {0};
-uint16_t duty[4] = {0, 1, 3, 6};
 uint16_t cap;
 
 //Reset stuff
@@ -107,7 +106,7 @@ int main(void)
 	
 	//set the active Mode
 	
-	activeMode = strobeMode;
+	activeMode = fourModes;
   /* USER CODE END 1 */
   
 
@@ -154,6 +153,10 @@ int main(void)
 	// ADC stuff	
 	lampTemperature = 0;
 	
+	// Strobe stuff
+	strobeOn = 0;
+	changeStrobe = 0;
+	
 	//USART stuff
 	if (HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) {
 		usb_mode = 1;
@@ -175,8 +178,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		
-		// Reset the system if usb is plugged in
-		// Also check if the System was reset via usb_mode and the cable is plugged in from the beginning
+		// Reset the system if usb is plugged in or plugged out
 		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) != usb_mode) {
 			HAL_NVIC_SystemReset();
 		}
