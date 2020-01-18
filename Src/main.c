@@ -29,6 +29,18 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+typedef struct {
+	uint16_t maximumModes;
+	uint16_t duty[4];
+	uint16_t strobe[4];
+} operationMode;
+
+operationMode standard = {1, {0, 500, 0, 0}, {0}};
+operationMode programmingMode = {3, {0, 3, 5, 10}, {0}};
+operationMode fourModes = {3, {0, 200, 500, 1000}, {0}};
+
+operationMode activeMode;
+uint16_t selectCap;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -88,7 +100,8 @@ static void MX_ADC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	activeMode = programmingMode;
+	selectCap = activeMode.maximumModes;
   /* USER CODE END 1 */
   
 
@@ -120,7 +133,7 @@ int main(void)
 	
 	// PWM stuff
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
-	sConfigOC.Pulse = duty[0];
+	sConfigOC.Pulse = 0;
 	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 	sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
 	select_old = 0;
@@ -195,14 +208,14 @@ int main(void)
 			if (select == 0 && !platineReseted) {
 				
 				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
-
+			
 				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
 				
 				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
 
 				select = 1;
 			} else {
-				sConfigOC.Pulse = duty[select];
+				sConfigOC.Pulse = activeMode.duty[select];
 				
 				HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
 				
