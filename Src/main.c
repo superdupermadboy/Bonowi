@@ -33,11 +33,13 @@ typedef struct {
 	uint16_t maximumModes;
 	uint16_t duty[4];
 	uint16_t strobe[4];
+	uint16_t strobeSpeed;
 } operationMode;
 
-operationMode standard = {1, {0, 500, 0, 0}, {0}};
-operationMode programmingMode = {3, {0, 3, 5, 10}, {0}};
-operationMode fourModes = {3, {0, 200, 500, 1000}, {0}};
+operationMode standard = {1, {0, 10, 0, 0}, {0}, 0};
+operationMode programmingMode = {3, {0, 3, 5, 10}, {0, 0, 0, 1}, 20};
+operationMode fourModes = {3, {0, 200, 500, 1000}, {0}, 0};
+operationMode strobeMode = {3, {0, 500, 1000, 500}, {0, 0, 0, 1}, 20};
 
 operationMode activeMode;
 uint16_t selectCap;
@@ -63,6 +65,8 @@ TIM_HandleTypeDef htim2;
 // Mode changing variables
 extern uint16_t select;
 uint16_t select_old;
+uint16_t strobeOn = 0;
+uint16_t changeStrobe = 0;
 TIM_OC_InitTypeDef sConfigOC = {0};
 uint16_t duty[4] = {0, 1, 3, 6};
 uint16_t cap;
@@ -100,8 +104,10 @@ static void MX_ADC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	activeMode = programmingMode;
-	selectCap = activeMode.maximumModes;
+	
+	//set the active Mode
+	
+	activeMode = strobeMode;
   /* USER CODE END 1 */
   
 
@@ -132,6 +138,8 @@ int main(void)
 	resetPlatine = 0;
 	
 	// PWM stuff
+	selectCap = activeMode.maximumModes;
+	
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
 	sConfigOC.Pulse = 0;
 	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
@@ -201,7 +209,7 @@ int main(void)
 		}
 		
 		// The main part of changing the light
-		if (select_old != select) {			
+		if ((select_old != select) || (!changeStrobe && activeMode.strobe[select])) {			
 			select_old = select;
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 
@@ -215,12 +223,31 @@ int main(void)
 
 				select = 1;
 			} else {
-				sConfigOC.Pulse = activeMode.duty[select];
+				
+				if (!activeMode.strobe[select]) {
+					sConfigOC.Pulse = activeMode.duty[select];
+				} else {
+					if (strobeOn) {
+						
+						sConfigOC.Pulse = 0;
+						strobeOn = 0;
+					} else {
+						
+						sConfigOC.Pulse = activeMode.duty[select];
+						strobeOn = 1;
+					}
+					
+					changeStrobe = activeMode.strobeSpeed;
+				}
 				
 				HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
 				
 				HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 			}
+		}
+		
+		if (changeStrobe) {
+			changeStrobe--;
 		}
 		
 		// Reset code
