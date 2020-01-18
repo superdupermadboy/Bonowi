@@ -52,7 +52,7 @@ TIM_HandleTypeDef htim2;
 extern uint16_t select;
 uint16_t select_old;
 TIM_OC_InitTypeDef sConfigOC = {0};
-uint16_t duty[4] = {0, 1, 500, 1000};
+uint16_t duty[4] = {0, 1, 3, 6};
 uint16_t cap;
 
 //Reset stuff
@@ -156,7 +156,7 @@ int main(void)
 		
 		// Reset the system if usb is plugged in
 		// Also check if the System was reset via usb_mode and the cable is plugged in from the beginning
-		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) && !usb_mode) {
+		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) != usb_mode) {
 			HAL_NVIC_SystemReset();
 		}
 		
