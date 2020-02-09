@@ -29,6 +29,20 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+typedef struct {
+	uint16_t maximumModes;
+	uint16_t duty[4];
+	uint16_t strobe[4];
+	uint16_t strobeSpeed;
+} operationMode;
+
+operationMode standard = {1, {0, 10, 0, 0}, {0}, 0};
+operationMode programmingMode = {3, {0, 3, 5, 10}, {0, 0, 0, 1}, 20};
+operationMode fourModes = {3, {0, 200, 500, 1000}, {0}, 0};
+operationMode strobeMode = {3, {0, 500, 1000, 500}, {0, 0, 0, 1}, 20};
+
+operationMode activeMode;
+uint16_t selectCap;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -51,8 +65,9 @@ TIM_HandleTypeDef htim2;
 // Mode changing variables
 extern uint16_t select;
 uint16_t select_old;
+uint16_t strobeOn;
+uint16_t changeStrobe;
 TIM_OC_InitTypeDef sConfigOC = {0};
-uint16_t duty[4] = {0, 1, 500, 1000};
 uint16_t cap;
 
 //Reset stuff
@@ -88,7 +103,10 @@ static void MX_ADC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	
+	//set the active Mode
+	
+	activeMode = fourModes;
   /* USER CODE END 1 */
   
 
@@ -119,8 +137,10 @@ int main(void)
 	resetPlatine = 0;
 	
 	// PWM stuff
+	selectCap = activeMode.maximumModes;
+	
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
-	sConfigOC.Pulse = duty[0];
+	sConfigOC.Pulse = 0;
 	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 	sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
 	select_old = 0;
@@ -132,6 +152,10 @@ int main(void)
 	
 	// ADC stuff	
 	lampTemperature = 0;
+	
+	// Strobe stuff
+	strobeOn = 0;
+	changeStrobe = 0;
 	
 	//USART stuff
 	if (HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) {
@@ -154,9 +178,8 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		
-		// Reset the system if usb is plugged in
-		// Also check if the System was reset via usb_mode and the cable is plugged in from the beginning
-		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) && !usb_mode) {
+		// Reset the system if usb is plugged in or plugged out
+		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) != usb_mode) {
 			HAL_NVIC_SystemReset();
 		}
 		
@@ -192,26 +215,45 @@ int main(void)
 		}
 		
 		// The main part of changing the light
-		if (select_old != select) {			
+		if ((select_old != select) || (!changeStrobe && activeMode.strobe[select])) {			
 			select_old = select;
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 
 			if (select == 0 && !platineReseted) {
 				
 				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
-
+			
 				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
 				
 				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
 
 				select = 1;
 			} else {
-				sConfigOC.Pulse = duty[select];
+				
+				if (!activeMode.strobe[select]) {
+					sConfigOC.Pulse = activeMode.duty[select];
+				} else {
+					if (strobeOn) {
+						
+						sConfigOC.Pulse = 0;
+						strobeOn = 0;
+					} else {
+						
+						sConfigOC.Pulse = activeMode.duty[select];
+						strobeOn = 1;
+					}
+					
+					changeStrobe = activeMode.strobeSpeed;
+				}
 				
 				HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
 				
 				HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 			}
+		}
+		
+		if (changeStrobe) {
+			changeStrobe--;
 		}
 		
 		// Reset code

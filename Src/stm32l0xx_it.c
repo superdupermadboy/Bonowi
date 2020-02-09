@@ -44,6 +44,7 @@
 /* USER CODE BEGIN PV */
 extern uint16_t platineReseted;
 extern uint16_t cap;
+extern uint16_t selectCap;
 uint16_t select = 0;
 uint16_t debounce = 0;
 /* USER CODE END PV */
@@ -159,14 +160,14 @@ void EXTI0_1_IRQHandler(void)
 	if (!debounce) {
 	
 		// Wrap if highest led power is enabled OR the Led has reached is cap because of temperetaure OR the platine was reseted
-		if (select >= 3 || select >= cap || platineReseted) {
+		if (select >= selectCap || select >= cap || platineReseted) {
 			select = 0;
 			platineReseted = 2;
 		} else {
 			select++;
 		}
 		
-		debounce = 200;
+		debounce = 500;
 	}
   /* USER CODE END EXTI0_1_IRQn 1 */
 }
