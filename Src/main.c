@@ -31,15 +31,16 @@
 
 typedef struct {
 	uint16_t maximumModes;
-	uint16_t duty[4];
-	uint16_t strobe[4];
+	uint16_t duty[5];
+	uint16_t strobe[5];
 	uint16_t strobeSpeed;
 } operationMode;
 
-operationMode standard = {1, {0, 10, 0, 0}, {0}, 0};
-operationMode programmingMode = {3, {0, 3, 5, 10}, {0, 0, 0, 1}, 20};
-operationMode fourModes = {3, {0, 200, 500, 1000}, {0}, 0};
-operationMode strobeMode = {3, {0, 500, 1000, 500}, {0, 0, 0, 1}, 20};
+operationMode standard = {1, {0, 10, 0, 0, 0}, {0}, 0};
+operationMode programmingMode = {4, {0, 3, 5, 10, 10}, {0, 0, 0, 0, 1}, 20};
+operationMode fourModes = {3, {0, 200, 500, 1000, 0}, {0}, 0};
+operationMode strobeMode = {4, {0, 200, 500, 1000, 500}, {0, 0, 0, 0, 1}, 8};
+operationMode slowMode = {3, {0, 200, 1000, 0, 0}, {0}, 8};
 
 operationMode activeMode;
 uint16_t selectCap;
@@ -76,6 +77,11 @@ uint16_t resetPlatine;
 
 //ADC variables
 uint32_t lampTemperature;
+uint32_t batteryVoltage;
+
+//Battery blinky;
+uint16_t batteryCritical;
+uint16_t timeToBlink;
 
 //USART variables
 uint16_t usb_mode;
@@ -106,7 +112,11 @@ int main(void)
 	
 	//set the active Mode
 	
+	//activeMode = programmingMode;
+	//activeMode = strobeMode;
 	activeMode = fourModes;
+	//activeMode = slowMode;
+	
   /* USER CODE END 1 */
   
 
@@ -116,7 +126,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -158,7 +168,7 @@ int main(void)
 	changeStrobe = 0;
 	
 	//USART stuff
-	if (HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) {
+	if (HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == 1) {
 		usb_mode = 1;
 	} else {
 		usb_mode = 0;
@@ -178,29 +188,66 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 		
+		if (batteryCritical) {
+			timeToBlink--;
+			
+			if (select != 0) {
+				batteryCritical = 0;
+				continue;
+			}
+			
+			if (timeToBlink == 0) {
+				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+				batteryCritical = 0;
+				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
+				select = 1;
+			}
+			
+			if(timeToBlink % 40 == 0) {
+				if ((HAL_GPIO_ReadPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin) == GPIO_PIN_SET)) {
+					HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
+				} else {
+					HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
+				}
+			}
+			
+			continue;
+		}
+		
 		// Reset the system if usb is plugged in or plugged out
-		if ((HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_SET) != usb_mode) {
+
+		if ((HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET) != usb_mode) {
 			HAL_NVIC_SystemReset();
 		}
 		
-		if (usb_mode && (HAL_GPIO_ReadPin(CHARGE_GPIO_Port, CHARGE_Pin) == GPIO_PIN_RESET)) {
-			usb_mode = 0;
-		}
-		
 		// Temperature monitoring
-		HAL_ADC_Start(&hadc);
-		if (HAL_ADC_PollForConversion(&hadc, 1000) == HAL_OK) {
-			lampTemperature = HAL_ADC_GetValue(&hadc);
+		HAL_GPIO_WritePin(ENABLE_BATTERY_GPIO_Port, ENABLE_BATTERY_Pin, GPIO_PIN_RESET);
+		for (int i = 0; i < 2; i++) {
+			if (i == 1) {
+				hadc.Instance->CHSELR = (uint32_t)(ADC_CHANNEL_5 & ADC_CHANNEL_MASK);
+			} else {
+				hadc.Instance->CHSELR = (uint32_t)(ADC_CHANNEL_7 & ADC_CHANNEL_MASK);
+			}
+			
+			HAL_ADC_Start(&hadc);
+			if (HAL_ADC_PollForConversion(&hadc, 1000) == HAL_OK) {
+				if (i == 0) {
+					lampTemperature = HAL_ADC_GetValue(&hadc);
+				} else {
+					batteryVoltage = HAL_ADC_GetValue(&hadc);
+				}
+			}
 		}
 		HAL_ADC_Stop(&hadc);
+		HAL_GPIO_WritePin(ENABLE_BATTERY_GPIO_Port, ENABLE_BATTERY_Pin, GPIO_PIN_SET);
 
 		// Depending on the Temperature set a maximum cap for the LED power
-		if (lampTemperature > 1600) {
+		if (lampTemperature > 2873) {
 			cap = 1;
-		} else if (lampTemperature > 1500) {
+		} else if (lampTemperature > 2637) {
 			cap = 2;
 		} else{
-			cap = 3;
+			cap = activeMode.maximumModes;
 		}
 		
 		if (select > cap) {
@@ -218,16 +265,16 @@ int main(void)
 		if ((select_old != select) || (!changeStrobe && activeMode.strobe[select])) {			
 			select_old = select;
 			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
-
-			if (select == 0 && !platineReseted) {
-				
-				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
 			
-				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
-				
-				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
+			if (select == 0 && !platineReseted) {				
 
-				select = 1;
+				if (batteryVoltage < 2250) {
+					batteryCritical = 1;
+					timeToBlink = 500;
+				} else {
+					HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+					select = 1;
+				}
 			} else {
 				
 				if (!activeMode.strobe[select]) {
@@ -271,6 +318,8 @@ int main(void)
 		} else {
 			resetPlatine = 0;
 		}
+
+		HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
   }
   /* USER CODE END 3 */
 }
@@ -339,7 +388,7 @@ static void MX_ADC_Init(void)
   hadc.Init.SamplingTime = ADC_SAMPLETIME_12CYCLES_5;
   hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
   hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc.Init.ContinuousConvMode = DISABLE;
+  hadc.Init.ContinuousConvMode = ENABLE;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
@@ -355,8 +404,15 @@ static void MX_ADC_Init(void)
   }
   /** Configure for the selected ADC regular channel to be converted. 
   */
-  sConfig.Channel = ADC_CHANNEL_7;
+  sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure for the selected ADC regular channel to be converted. 
+  */
+  sConfig.Channel = ADC_CHANNEL_7;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -440,7 +496,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin|ENABLE_BATTERY_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : BUTTON_Pin */
   GPIO_InitStruct.Pin = BUTTON_Pin;
@@ -454,12 +510,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(CHARGE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : STATUS_LED_Pin */
-  GPIO_InitStruct.Pin = STATUS_LED_Pin;
+  /*Configure GPIO pins : STATUS_LED_Pin ENABLE_BATTERY_Pin */
+  GPIO_InitStruct.Pin = STATUS_LED_Pin|ENABLE_BATTERY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(STATUS_LED_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BOOT_Pin */
+  GPIO_InitStruct.Pin = BOOT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(BOOT_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);

@@ -67,10 +67,16 @@ void Error_Handler(void);
 #define LED_PWM_GPIO_Port GPIOA
 #define CHARGE_Pin GPIO_PIN_4
 #define CHARGE_GPIO_Port GPIOA
+#define BATTERY_V_Pin GPIO_PIN_5
+#define BATTERY_V_GPIO_Port GPIOA
 #define LAMP_V_Pin GPIO_PIN_7
 #define LAMP_V_GPIO_Port GPIOA
 #define STATUS_LED_Pin GPIO_PIN_1
 #define STATUS_LED_GPIO_Port GPIOB
+#define ENABLE_BATTERY_Pin GPIO_PIN_6
+#define ENABLE_BATTERY_GPIO_Port GPIOB
+#define BOOT_Pin GPIO_PIN_9
+#define BOOT_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

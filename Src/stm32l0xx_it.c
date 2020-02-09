@@ -167,7 +167,7 @@ void EXTI0_1_IRQHandler(void)
 			select++;
 		}
 		
-		debounce = 500;
+		debounce = 100;
 	}
   /* USER CODE END EXTI0_1_IRQn 1 */
 }
