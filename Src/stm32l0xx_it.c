@@ -42,8 +42,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-	uint16_t	systick;
-
+extern uint16_t platineReseted;
+extern uint16_t cap;
+extern uint16_t selectCap;
+uint16_t select = 0;
+uint16_t debounce = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,16 +60,9 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern TIM_HandleTypeDef htim2;
-extern UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN EV */
 
-	uint16_t select = 0;
-	uint16_t debounce = 0;
-	uint16_t resetSystick = 0;
-	uint16_t lampToHot = 3000;
-	uint16_t reseted = 0;
-	uint16_t strobo = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -132,32 +128,9 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-
-	if (resetSystick) {
-		resetSystick--;
-	}
-	
-	if ( systick )
-	{
-		systick--;
-	}
-
-	if ( debounce )
-	{
+	if (debounce) {
 		debounce--;
 	}
-	
-	if ( lampToHot )
-	{
-		lampToHot--;
-	}
-	
-	if ( strobo )
-	{
-		strobo--;
-	}
-	
-	//HAL_GPIO_TogglePin(O_LED_PWM_GPIO_Port,O_LED_PWM_Pin);
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -182,54 +155,21 @@ void EXTI0_1_IRQHandler(void)
   /* USER CODE END EXTI0_1_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
   /* USER CODE BEGIN EXTI0_1_IRQn 1 */
-	if ( debounce == 0 )
-	{
-		if ( select >= 4 )
-		{
+	
+	
+	if (!debounce) {
+	
+		// Wrap if highest led power is enabled OR the Led has reached is cap because of temperetaure OR the platine was reseted
+		if (select >= selectCap || select >= cap || platineReseted) {
 			select = 0;
+			platineReseted = 2;
+		} else {
+			select++;
 		}
-		else
-		{
-			if (reseted) {
-				reseted = 0;
-			} else {
-				select++;			
-			}
-		}
-		debounce = 100;
-		 systick = 500;
 		
-
+		debounce = 100;
 	}
   /* USER CODE END EXTI0_1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles TIM2 global interrupt.
-  */
-void TIM2_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM2_IRQn 0 */
-
-  /* USER CODE END TIM2_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim2);
-  /* USER CODE BEGIN TIM2_IRQn 1 */
-
-  /* USER CODE END TIM2_IRQn 1 */
-}
-
-/**
-  * @brief This function handles USART2 global interrupt / USART2 wake-up interrupt through EXTI line 26.
-  */
-void USART2_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART2_IRQn 0 */
-
-  /* USER CODE END USART2_IRQn 0 */
-  HAL_UART_IRQHandler(&huart2);
-  /* USER CODE BEGIN USART2_IRQn 1 */
-
-  /* USER CODE END USART2_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

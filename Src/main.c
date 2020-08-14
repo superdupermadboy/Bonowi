@@ -29,11 +29,26 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+typedef struct {
+	uint16_t maximumModes;
+	uint16_t duty[5];
+	uint16_t strobe[5];
+	uint16_t strobeSpeed;
+} operationMode;
+
+operationMode standard = {1, {0, 10, 0, 0, 0}, {0}, 0};
+operationMode programmingMode = {4, {0, 3, 5, 10, 10}, {0, 0, 0, 0, 1}, 20};
+operationMode fourModes = {3, {0, 200, 500, 1000, 0}, {0}, 0};
+operationMode strobeMode = {4, {0, 200, 500, 1000, 500}, {0, 0, 0, 0, 1}, 8};
+operationMode slowMode = {3, {0, 200, 1000, 0, 0}, {0}, 8};
+
+operationMode activeMode;
+uint16_t selectCap;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define RESET_THRESOLD 2 << 8 
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,49 +61,44 @@ ADC_HandleTypeDef hadc;
 
 TIM_HandleTypeDef htim2;
 
-UART_HandleTypeDef huart2;
-
-WWDG_HandleTypeDef hwwdg;
-
 /* USER CODE BEGIN PV */
-	TIM_OC_InitTypeDef sConfigOC = {0};
-	  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-uint16_t mainstate;
-	uint32_t duty[5] 				= {0,250,500,1000,400};		//500 bei prescaler 50 und 1000period = strobo
-	uint32_t prescaler[4] 		= {1,100,1,50};
-	
-uint16_t reset_lamp = 0;
-	
-uint16_t adccount;
-uint32_t	ADC_Value[ADC_CONVERTIONCOUNT];
-float VBat,VRef,VTempPCB,VTempMCU,VSense;
+
+// Mode changing variables
+extern uint16_t select;
+uint16_t select_old;
+uint16_t strobeOn;
+uint16_t changeStrobe;
+TIM_OC_InitTypeDef sConfigOC = {0};
+uint16_t cap;
+
+//Reset stuff
+uint16_t platineReseted;
+uint16_t resetPlatine;
+
+//ADC variables
+uint32_t lampTemperature;
+uint32_t batteryVoltage;
+
+//Battery blinky;
+uint16_t batteryCritical;
+uint16_t timeToBlink;
+
+//USART variables
+uint16_t usb_mode;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_ADC_Init(void);
-static void MX_USART2_UART_Init(void);
-static void MX_WWDG_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_ADC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern 	uint16_t	systick;
-extern uint16_t select;
-extern uint16_t resetSystick;
-extern uint16_t lampToHot;
-extern uint16_t reseted;
-extern uint16_t strobo;
-uint16_t select_old;
-uint16_t firstTime;
-uint16_t stroboOff;
-
 
 /* USER CODE END 0 */
 
@@ -100,6 +110,13 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	
+	//set the active Mode
+	
+	//activeMode = programmingMode;
+	//activeMode = strobeMode;
+	activeMode = fourModes;
+	//activeMode = slowMode;
+	
   /* USER CODE END 1 */
   
 
@@ -109,240 +126,200 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-	
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ADC_Init();
-  MX_USART2_UART_Init();
-  MX_WWDG_Init();
   MX_TIM2_Init();
+  MX_ADC_Init();
   /* USER CODE BEGIN 2 */
 
-	mainstate = 0;
+	// Reset Stuff
+	platineReseted = 0;
+	resetPlatine = 0;
+	
+	// PWM stuff
+	selectCap = activeMode.maximumModes;
+	
+	sConfigOC.OCMode = TIM_OCMODE_PWM1;
+	sConfigOC.Pulse = 0;
+	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
+	select_old = 0;
+	HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
+
+	// Low Power stuff
+	HAL_PWREx_EnableUltraLowPower();
+	HAL_PWREx_EnableFastWakeUp();
+	
+	// ADC stuff	
+	lampTemperature = 0;
+	
+	// Strobe stuff
+	strobeOn = 0;
+	changeStrobe = 0;
+	
+	//USART stuff
+	if (HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == 1) {
+		usb_mode = 1;
+	} else {
+		usb_mode = 0;
+	}
+	
+	// Comment this out, if processor should reset the whole time
+	// usb_mode = 0;
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 		
-		switch ( mainstate )
-		{
+		if (batteryCritical) {
+			timeToBlink--;
 			
-			// Boot only
-			case 0:
-
-				systick = 5000;											// kein debuggen möglich, schafft man nicht anzuschalten bevor er in den sleep geschickt wird
-				select = select_old = 0;													// Dadurch erkenne ich einen ausgelößten Watchdog
-				mainstate = 20;
-				lampToHot = firstTime = 0;
-				stroboOff = strobo = 0;
-				
-				break;
+			if (select != 0) {
+				batteryCritical = 0;
+				continue;
+			}
 			
-			// Sleep:
-			case 10:
-	
-				mainstate = 20;
+			if (timeToBlink == 0) {
+				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+				batteryCritical = 0;
+				HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
+				select = 1;
+			}
 			
-				HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);			// Green LED OFF
-				HAL_TIM_PWM_Stop(&htim2,TIM_CHANNEL_2);
-				HAL_PWREx_EnableUltraLowPower();
-				HAL_PWREx_EnableFastWakeUp(); 
-
-				HAL_SuspendTick();
-				
-				HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON,PWR_STOPENTRY_WFE);
-				break;
-				
-			// Wake up:	
-			case 20:
-				
-				HAL_Init();
-
-				SystemClock_Config();
-
-				MX_GPIO_Init();
-				MX_ADC_Init();
-				MX_USART2_UART_Init();
-				MX_WWDG_Init();
-				MX_TIM2_Init();
-				//HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);			// Green LED OFF
-
-				mainstate = 100;
-				break;
-			
-
-			// Set New Light
-			case 100:
-
-//				htim2.Instance = TIM2;
-//				htim2.Init.Prescaler = prescaler[select];
-//				htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-//				htim2.Init.Period = 1000;
-//				htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-//				htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-//				if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
-//				{
-//					Error_Handler();
-//				}						
-//				sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-//				if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
-//				{
-//					Error_Handler();
-//				}
-//				if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
-//				{
-//					Error_Handler();
-//				}
-//				sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-//				sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-//				if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
-//				{
-//					Error_Handler();
-//				}	
-				HAL_TIM_PWM_Stop(&htim2,TIM_CHANNEL_2);
-				sConfigOC.OCMode = TIM_OCMODE_PWM1;
-				sConfigOC.Pulse = duty[select];
-				sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-				sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-				
-				
-				if (stroboOff && select == 4) {
-						sConfigOC.Pulse = duty[0];
+			if(timeToBlink % 40 == 0) {
+				if ((HAL_GPIO_ReadPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin) == GPIO_PIN_SET)) {
+					HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET);
+				} else {
+					HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
 				}
-				
-				if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-				{
-					Error_Handler();
-				}	
-//				HAL_TIM_MspPostInit(&htim2);
-
-				HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
-				select_old = select;
-				mainstate = 200;		
-				break;
+			}
 			
-			
-			// Idle:	
-			case 200:
-				
-				if ( select == 0 &&  systick == 0 )
-				{
-					mainstate = 10;
-					lampToHot = 0;
-					firstTime = 0;
-				}
-				else
-				{
-					
-					//Hier Pin level abfragen ob noch gedrückt?
-					if ( select != select_old )
-					{
-						mainstate = 100;
-					}
-					else
-					{
-						mainstate = 20;
-						
-						if (select == 3 && lampToHot == 0) {
-							if (firstTime < 5) {
-								firstTime++;
-								lampToHot = 5000;
-							} else {
-								select = 0;
-								mainstate = 100;
-								firstTime = 0;
-							}
-						}
-						
-						if (select == 4 && strobo == 0) {
-							strobo = 30;
-							if (stroboOff) {
-								stroboOff = 0;
-							} else {
-								stroboOff = 1;
-							}
-						}
-						
-						if (select == 0) {
-							lampToHot = 0;
-							firstTime = 0;
-						}
-					}
-				}
-				break;
+			continue;
 		}
 		
-		HAL_WWDG_Refresh(&hwwdg);
-		
-		
-		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
-		{
+		// Reset the system if usb is plugged in or plugged out
 
-				if (resetSystick < 1) {
-					resetSystick = 500;
-
-					reset_lamp++;
-					
-					
-					if (reset_lamp > 3)
-					{
-						reset_lamp = 0;
-						mainstate = 20;
-						select = 0;
-						reseted = 1;
-						//HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);
-					}
-				}
-		} 
-		else
-		{
-			reset_lamp = 0;
+		if ((HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET) != usb_mode) {
+			HAL_NVIC_SystemReset();
 		}
 		
-//		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
-//		{
-//			
-//			// Taste gedrückt
-//			
-//			sConfigOC.OCMode = TIM_OCMODE_PWM1;
-//			sConfigOC.Pulse = 12000;
-//			sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-//			sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-//			if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-//			{
-//				Error_Handler();
-//			}			
-//		}
-//		else
-//		{
-//			
-//			// Taste losgelassen
-//			
-//			sConfigOC.OCMode = TIM_OCMODE_PWM1;
-//			sConfigOC.Pulse = 0;
-//			sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-//			sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-//			if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-//			{
-//				Error_Handler();
-//			}	
-//			
-//		}
+		// Temperature monitoring
+		HAL_GPIO_WritePin(ENABLE_BATTERY_GPIO_Port, ENABLE_BATTERY_Pin, GPIO_PIN_RESET);
+		for (int i = 0; i < 2; i++) {
+			if (i == 1) {
+				hadc.Instance->CHSELR = (uint32_t)(ADC_CHANNEL_5 & ADC_CHANNEL_MASK);
+			} else {
+				hadc.Instance->CHSELR = (uint32_t)(ADC_CHANNEL_7 & ADC_CHANNEL_MASK);
+			}
+			
+			HAL_ADC_Start(&hadc);
+			if (HAL_ADC_PollForConversion(&hadc, 1000) == HAL_OK) {
+				if (i == 0) {
+					lampTemperature = HAL_ADC_GetValue(&hadc);
+				} else {
+					batteryVoltage = HAL_ADC_GetValue(&hadc);
+				}
+			}
+		}
+		HAL_ADC_Stop(&hadc);
+		HAL_GPIO_WritePin(ENABLE_BATTERY_GPIO_Port, ENABLE_BATTERY_Pin, GPIO_PIN_SET);
+
+		// Depending on the Temperature set a maximum cap for the LED power
+		if (lampTemperature > 2873) {
+			cap = 1;
+		} else if (lampTemperature > 2637) {
+			cap = 2;
+		} else{
+			cap = activeMode.maximumModes;
+		}
 		
+		if (select > cap) {
+			select = cap;
+		}
+		
+		// Second status of the reset, option, so the stopmode will be engaged
+		if (platineReseted == 2) {
+			platineReseted = 0;
+			select = 0;
+			select_old = 1;
+		}
+		
+		// The main part of changing the light
+		if ((select_old != select) || (!changeStrobe && activeMode.strobe[select])) {			
+			select_old = select;
+			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
+			
+			if (select == 0 && !platineReseted) {				
+
+				if (batteryVoltage < 2250) {
+					batteryCritical = 1;
+					timeToBlink = 500;
+				} else {
+					HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+					select = 1;
+				}
+			} else {
+				
+				if (!activeMode.strobe[select]) {
+					sConfigOC.Pulse = activeMode.duty[select];
+				} else {
+					if (strobeOn) {
+						
+						sConfigOC.Pulse = 0;
+						strobeOn = 0;
+					} else {
+						
+						sConfigOC.Pulse = activeMode.duty[select];
+						strobeOn = 1;
+					}
+					
+					changeStrobe = activeMode.strobeSpeed;
+				}
+				
+				HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
+				
+				HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+			}
+		}
+		
+		if (changeStrobe) {
+			changeStrobe--;
+		}
+		
+		// Reset code
+		if ((HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin) == GPIO_PIN_RESET) && !platineReseted) {
+			resetPlatine++;
+			
+			if (resetPlatine > RESET_THRESOLD) {
+				// This is for hard reset
+				//NVIC_SystemReset();
+				
+				platineReseted = 1;
+				select_old = 1;
+				select = 0;
+			}
+		} else {
+			resetPlatine = 0;
+		}
+
+		HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
   }
   /* USER CODE END 3 */
 }
@@ -355,20 +332,17 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Configure the main internal regulator output voltage 
   */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_DIV4;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLLMUL_3;
-  RCC_OscInitStruct.PLL.PLLDIV = RCC_PLLDIV_3;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.MSIState = RCC_MSI_ON;
+  RCC_OscInitStruct.MSICalibrationValue = 0;
+  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_2;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -377,18 +351,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV4;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_MSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2;
-  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
@@ -415,12 +383,12 @@ static void MX_ADC_Init(void)
   */
   hadc.Instance = ADC1;
   hadc.Init.OversamplingMode = DISABLE;
-  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV1;
   hadc.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc.Init.SamplingTime = ADC_SAMPLETIME_79CYCLES_5;
+  hadc.Init.SamplingTime = ADC_SAMPLETIME_12CYCLES_5;
   hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
   hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc.Init.ContinuousConvMode = DISABLE;
+  hadc.Init.ContinuousConvMode = ENABLE;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
@@ -444,28 +412,7 @@ static void MX_ADC_Init(void)
   }
   /** Configure for the selected ADC regular channel to be converted. 
   */
-  sConfig.Channel = ADC_CHANNEL_6;
-  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure for the selected ADC regular channel to be converted. 
-  */
   sConfig.Channel = ADC_CHANNEL_7;
-  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure for the selected ADC regular channel to be converted. 
-  */
-  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure for the selected ADC regular channel to be converted. 
-  */
-  sConfig.Channel = ADC_CHANNEL_VREFINT;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -536,71 +483,6 @@ static void MX_TIM2_Init(void)
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 9600;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * @brief WWDG Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_WWDG_Init(void)
-{
-
-  /* USER CODE BEGIN WWDG_Init 0 */
-
-  /* USER CODE END WWDG_Init 0 */
-
-  /* USER CODE BEGIN WWDG_Init 1 */
-
-  /* USER CODE END WWDG_Init 1 */
-  hwwdg.Instance = WWDG;
-  hwwdg.Init.Prescaler = WWDG_PRESCALER_8;
-  hwwdg.Init.Window = 127;
-  hwwdg.Init.Counter = 127;
-  hwwdg.Init.EWIMode = WWDG_EWI_DISABLE;
-  if (HAL_WWDG_Init(&hwwdg) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN WWDG_Init 2 */
-
-  /* USER CODE END WWDG_Init 2 */
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -610,49 +492,36 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, O_StatusLED_Pin|O_VBat_En_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, STATUS_LED_Pin|ENABLE_BATTERY_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC14 PC15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_15;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ID_Key_Pin */
-  GPIO_InitStruct.Pin = ID_Key_Pin;
+  /*Configure GPIO pin : BUTTON_Pin */
+  GPIO_InitStruct.Pin = BUTTON_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(ID_Key_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(BUTTON_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ID_Charge_En_Pin */
-  GPIO_InitStruct.Pin = ID_Charge_En_Pin;
+  /*Configure GPIO pin : CHARGE_Pin */
+  GPIO_InitStruct.Pin = CHARGE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(ID_Charge_En_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(CHARGE_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : O_StatusLED_Pin O_VBat_En_Pin */
-  GPIO_InitStruct.Pin = O_StatusLED_Pin|O_VBat_En_Pin;
+  /*Configure GPIO pins : STATUS_LED_Pin ENABLE_BATTERY_Pin */
+  GPIO_InitStruct.Pin = STATUS_LED_Pin|ENABLE_BATTERY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_9;
+  /*Configure GPIO pin : BOOT_Pin */
+  GPIO_InitStruct.Pin = BOOT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(BOOT_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
