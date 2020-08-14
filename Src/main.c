@@ -55,8 +55,11 @@ WWDG_HandleTypeDef hwwdg;
 	  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 uint16_t mainstate;
-	uint32_t duty[4] 				= {0,250,500,1000};		//500 bei prescaler 50 und 1000period = strobo
+	uint32_t duty[5] 				= {0,250,500,1000,400};		//500 bei prescaler 50 und 1000period = strobo
 	uint32_t prescaler[4] 		= {1,100,1,50};
+	
+uint16_t reset_lamp = 0;
+	
 uint16_t adccount;
 uint32_t	ADC_Value[ADC_CONVERTIONCOUNT];
 float VBat,VRef,VTempPCB,VTempMCU,VSense;
@@ -78,9 +81,13 @@ static void MX_TIM2_Init(void);
 /* USER CODE BEGIN 0 */
 extern 	uint16_t	systick;
 extern uint16_t select;
+extern uint16_t resetSystick;
+extern uint16_t lampToHot;
+extern uint16_t reseted;
+extern uint16_t strobo;
 uint16_t select_old;
-
-
+uint16_t firstTime;
+uint16_t stroboOff;
 
 
 /* USER CODE END 0 */
@@ -140,6 +147,8 @@ int main(void)
 				systick = 5000;											// kein debuggen möglich, schafft man nicht anzuschalten bevor er in den sleep geschickt wird
 				select = select_old = 0;													// Dadurch erkenne ich einen ausgelößten Watchdog
 				mainstate = 20;
+				lampToHot = firstTime = 0;
+				stroboOff = strobo = 0;
 				
 				break;
 			
@@ -209,14 +218,18 @@ int main(void)
 				sConfigOC.Pulse = duty[select];
 				sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 				sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+				
+				
+				if (stroboOff && select == 4) {
+						sConfigOC.Pulse = duty[0];
+				}
+				
 				if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
 				{
 					Error_Handler();
 				}	
 //				HAL_TIM_MspPostInit(&htim2);
-				
-				
-				
+
 				HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
 				select_old = select;
 				mainstate = 200;		
@@ -228,7 +241,9 @@ int main(void)
 				
 				if ( select == 0 &&  systick == 0 )
 				{
-					mainstate = 10;					
+					mainstate = 10;
+					lampToHot = 0;
+					firstTime = 0;
 				}
 				else
 				{
@@ -240,104 +255,63 @@ int main(void)
 					}
 					else
 					{
-						mainstate = 30;
+						mainstate = 20;
+						
+						if (select == 3 && lampToHot == 0) {
+							if (firstTime < 5) {
+								firstTime++;
+								lampToHot = 5000;
+							} else {
+								select = 0;
+								mainstate = 100;
+								firstTime = 0;
+							}
+						}
+						
+						if (select == 4 && strobo == 0) {
+							strobo = 30;
+							if (stroboOff) {
+								stroboOff = 0;
+							} else {
+								stroboOff = 1;
+							}
+						}
+						
+						if (select == 0) {
+							lampToHot = 0;
+							firstTime = 0;
+						}
 					}
 				}
 				break;
-				
-				
-				
-				
-				
-				// ADC:
-			case 30:
-				
-				if ( HAL_ADCEx_Calibration_Start(&hadc,ADC_SINGLE_ENDED) == HAL_OK )		// im Test ob überhaupt notwendig
-				{
-					HAL_GPIO_WritePin(O_VBat_En_GPIO_Port,O_VBat_En_Pin,GPIO_PIN_RESET);
-					mainstate = 32;
-				}				
-				break;
-				
-				
-
-			case 32:
-
-				if ( HAL_ADC_Start(&hadc) == HAL_OK )
-				{
-					adccount = 0;
-					mainstate = 34;
-				}				
-				break;				
-				
-				
-				
-			case 34:
-				
-				switch ( HAL_ADC_PollForConversion(&hadc,1000) )
-				{
-					
-					case HAL_OK:
-					
-						ADC_Value[adccount] = HAL_ADC_GetValue(&hadc);
-						adccount++;
-						if ( adccount >= ADC_CONVERTIONCOUNT )
-						{
-							mainstate = 36;
-						}
-						break;
-						
-					
-					case HAL_BUSY:
-						
-						break;
-					
-					
-					default:
-						
-						mainstate = 36;
-						
-						
-				}
-				break;
-				
-				
-			case 36:
-				
-				if ( HAL_ADC_Stop(&hadc) == HAL_OK )
-				{
-					//HAL_GPIO_WritePin(O_VBat_En_GPIO_Port,O_VBat_En_Pin,GPIO_PIN_SET);
-					
-					VBat = (float)ADC_Value[0]*3.3f / 4096 * 2;
-					VSense = (float)ADC_Value[1]*3.3f / 4096;
-					VTempPCB = (float)ADC_Value[2]*3.3f / 4096;					
-					VTempMCU = (float)ADC_Value[3]*3.3f / 4096;
-					VRef = (float)ADC_Value[4]*3.3f / 4096;
-					
-					
-					
-					mainstate = 20;
-				}				
-				break;
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-			
-
-			
 		}
 		
 		HAL_WWDG_Refresh(&hwwdg);
 		
 		
-		
+		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
+		{
+
+				if (resetSystick < 1) {
+					resetSystick = 500;
+
+					reset_lamp++;
+					
+					
+					if (reset_lamp > 3)
+					{
+						reset_lamp = 0;
+						mainstate = 20;
+						select = 0;
+						reseted = 1;
+						//HAL_GPIO_WritePin(O_StatusLED_GPIO_Port,O_StatusLED_Pin,GPIO_PIN_SET);
+					}
+				}
+		} 
+		else
+		{
+			reset_lamp = 0;
+		}
 		
 //		if ( HAL_GPIO_ReadPin(ID_Key_GPIO_Port,ID_Key_Pin) == GPIO_PIN_RESET )
 //		{
