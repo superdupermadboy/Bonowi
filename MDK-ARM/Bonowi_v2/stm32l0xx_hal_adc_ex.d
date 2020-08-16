@@ -30,3 +30,5 @@ bonowi_v2\stm32l0xx_hal_adc_ex.o: ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_
 bonowi_v2\stm32l0xx_hal_adc_ex.o: ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_pwr_ex.h
 bonowi_v2\stm32l0xx_hal_adc_ex.o: ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_tim.h
 bonowi_v2\stm32l0xx_hal_adc_ex.o: ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_tim_ex.h
+bonowi_v2\stm32l0xx_hal_adc_ex.o: ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_uart.h
+bonowi_v2\stm32l0xx_hal_adc_ex.o: ../Drivers/STM32L0xx_HAL_Driver/Inc/stm32l0xx_hal_uart_ex.h

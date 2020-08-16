@@ -36,11 +36,11 @@ typedef struct {
 	uint16_t strobeSpeed;
 } operationMode;
 
-operationMode standard = {1, {0, 10, 0, 0, 0}, {0}, 0};
-operationMode programmingMode = {4, {0, 3, 5, 10, 10}, {0, 0, 0, 0, 1}, 20};
-operationMode fourModes = {3, {0, 200, 500, 1000, 0}, {0}, 0};
-operationMode strobeMode = {4, {0, 200, 500, 1000, 500}, {0, 0, 0, 0, 1}, 8};
-operationMode slowMode = {3, {0, 200, 1000, 0, 0}, {0}, 8};
+operationMode standard = 				{1, {0, 10, 0, 0, 0}, 				{0}, 							0};
+operationMode programmingMode = {4, {0, 3, 5, 10, 10}, 				{0, 0, 0, 0, 1}, 20};
+operationMode fourModes = 			{3, {0, 200, 500, 1000, 0}, 	{0}, 							0};
+operationMode strobeMode = 			{4, {0, 200, 500, 1000, 500}, {0, 0, 0, 0, 1},	8};
+operationMode slowMode = 				{3, {0, 200, 1000, 0, 0}, 		{0}, 							8};
 
 operationMode activeMode;
 uint16_t selectCap;
@@ -60,6 +60,8 @@ uint16_t selectCap;
 ADC_HandleTypeDef hadc;
 
 TIM_HandleTypeDef htim2;
+
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -84,7 +86,8 @@ uint16_t batteryCritical;
 uint16_t timeToBlink;
 
 //USART variables
-uint16_t usb_mode;
+uint8_t RxBuf[1]; 
+uint8_t TxBuf[10]={"Success!"};
 
 /* USER CODE END PV */
 
@@ -93,6 +96,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_ADC_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -118,7 +122,6 @@ int main(void)
 	//activeMode = slowMode;
 	
   /* USER CODE END 1 */
-  
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -140,6 +143,7 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   MX_ADC_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
 	// Reset Stuff
@@ -167,12 +171,6 @@ int main(void)
 	strobeOn = 0;
 	changeStrobe = 0;
 	
-	//USART stuff
-	if (HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == 1) {
-		usb_mode = 1;
-	} else {
-		usb_mode = 0;
-	}
 	
 	// Comment this out, if processor should reset the whole time
 	// usb_mode = 0;
@@ -187,7 +185,26 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		
+
+		while(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
+			HAL_UART_AbortReceive(&huart2);
+			if(HAL_UART_Receive(&huart2, RxBuf, 1, 100)==HAL_OK){
+				if(RxBuf[0]=='1'){
+					activeMode = programmingMode;
+				}
+				else if(RxBuf[0]=='2'){
+					activeMode = strobeMode;
+				}
+				else if(RxBuf[0]=='3'){
+					activeMode = fourModes;
+				} 
+				else if(RxBuf[0]=='4'){
+					activeMode = slowMode;
+				}			
+				//HAL_UART_Transmit(&huart2, TxBuf, 10, 300);
+			}
+		}
+	
 		if (batteryCritical) {
 			timeToBlink--;
 			
@@ -214,12 +231,7 @@ int main(void)
 			continue;
 		}
 		
-		// Reset the system if usb is plugged in or plugged out
 
-		if ((HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET) != usb_mode) {
-			HAL_NVIC_SystemReset();
-		}
-		
 		// Temperature monitoring
 		HAL_GPIO_WritePin(ENABLE_BATTERY_GPIO_Port, ENABLE_BATTERY_Pin, GPIO_PIN_RESET);
 		for (int i = 0; i < 2; i++) {
@@ -332,11 +344,12 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Configure the main internal regulator output voltage 
+  /** Configure the main internal regulator output voltage
   */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
@@ -347,7 +360,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -357,6 +370,12 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
@@ -379,7 +398,7 @@ static void MX_ADC_Init(void)
   /* USER CODE BEGIN ADC_Init 1 */
 
   /* USER CODE END ADC_Init 1 */
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc.Instance = ADC1;
   hadc.Init.OversamplingMode = DISABLE;
@@ -402,7 +421,7 @@ static void MX_ADC_Init(void)
   {
     Error_Handler();
   }
-  /** Configure for the selected ADC regular channel to be converted. 
+  /** Configure for the selected ADC regular channel to be converted.
   */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
@@ -410,7 +429,7 @@ static void MX_ADC_Init(void)
   {
     Error_Handler();
   }
-  /** Configure for the selected ADC regular channel to be converted. 
+  /** Configure for the selected ADC regular channel to be converted.
   */
   sConfig.Channel = ADC_CHANNEL_7;
   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
@@ -479,6 +498,41 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 2 */
   HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
@@ -554,7 +608,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
