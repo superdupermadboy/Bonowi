@@ -1,0 +1,14 @@
+{
+  "name": "bonowi-ui",
+  "version": "1.0.0",
+  "description": "Ui for setting lamp parameters",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^9.2.0"
+  },
+  "dependencies": {}
+}
