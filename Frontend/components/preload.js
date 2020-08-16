@@ -1,6 +1,7 @@
 // All of the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
 const { ipcRenderer } = require('electron');
+const { getAllSerialPorts } = require('../src/serial');
 
 window.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.getElementById('button-save');
@@ -11,5 +12,6 @@ window.addEventListener('DOMContentLoaded', () => {
         ipcRenderer.send('update-lamp', inputValue);
     })
 
+    getAllSerialPorts();
   })
   

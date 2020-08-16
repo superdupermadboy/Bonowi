@@ -3,6 +3,8 @@ const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
 const { sendToSerialPort } = require('./src/serial')
 
+app.allowRendererProcessReuse = false;
+
 function createWindow () {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
