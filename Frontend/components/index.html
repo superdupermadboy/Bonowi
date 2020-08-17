@@ -6,33 +6,64 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>Bonowi ui</title>
+    <link rel="stylesheet" href="./mui.min.css"/>
+    <link rel="stylesheet" href="./index.css"/>
   </head>
   <body>
-    <select name="COM port" id="comport">
+    <div class="mui-container">
+      <div class="mui-panel">
+        <div class="mui-select">
+          <select name="COM port" id="comport">
+          
+          </select>
+          <label for="comport">
+            Select your comport: 
+          </label>
+        </div>
+
+        <button 
+          class="mui-btn mui-btn--raised mui-btn--primary"
+          id="open-port"
+        >
+          Open port
+        </button>
+
+        <button
+          disabled
+          id="close-port"
+          class="mui-btn mui-btn--raised mui-btn--primary"
+        >
+          Close port
+        </button>  
+      </div>
+
+      <div class="mui-panel">
+        <div class="mui-select">
+          <select name="mode" id="mode">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>  
+          <label for="comport">
+            Select your mode to flash: 
+          </label>
+        </div>
+
+        <button
+          disabled
+          id="button-save"
+          class="mui-btn mui-btn--raised mui-btn--primary"
+        >
+          Save values
+        </button>
+      </div>
       
-    </select>
+      <div class="mui-panel">
+        <ul id="event-list">
 
-    <button id="open-port">
-      Open port
-    </button>
-
-    <button disabled id="close-port">
-      Close port
-    </button>
-
-    <select name="mode" id="mode">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-    </select>
-
-    <button disabled id="button-save">
-      Save values
-    </button>
-
-    <li id="event-list">
-      
-    </li>
+        </ul>
+      </div>
+    </div>
   </body>
 </html>
