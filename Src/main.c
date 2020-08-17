@@ -189,19 +189,13 @@ int main(void)
 		while(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
 			HAL_UART_AbortReceive(&huart2);
 			if(HAL_UART_Receive(&huart2, RxBuf, 1, 100)==HAL_OK){
-				if(RxBuf[0]=='1'){
-					activeMode = programmingMode;
-				}
-				else if(RxBuf[0]=='2'){
-					activeMode = strobeMode;
-				}
-				else if(RxBuf[0]=='3'){
-					activeMode = fourModes;
-				} 
-				else if(RxBuf[0]=='4'){
-					activeMode = slowMode;
-				}			
+				switch(RxBuf[0]){
+					case '1': 	activeMode = programmingMode;	break; 
+					case '2': 	activeMode = strobeMode;			break;
+					case '3': 	activeMode = fourModes;				break;
+					case '4': 	activeMode = slowMode;  			break;
 				//HAL_UART_Transmit(&huart2, TxBuf, 10, 300);
+				}
 			}
 		}
 	
