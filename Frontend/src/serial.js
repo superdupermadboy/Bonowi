@@ -1,25 +1,34 @@
 const SerialPort = require('serialport');
-const { MessagePortMain } = require('electron');
-
 
 let port;
 
 const sendToSerialPort = (data) => {
     console.log('sending this to serial port', data);
     
-    port = new SerialPort(data.comport, {
-        baudRate: 9600,
-        autoOpen: false,
-    });     
-
-    port.open((err) => {
-        console.log('Error happened while opening port: ', err);
+    let portWritten = port.write(data, (error) => {
+        console.log('Written to port with error', error)
     });
 
-    port.on('open', () => {
-        console.log('sending data');
-        port.write(data.mode);
-        port.close();
+    console.log('written status', portWritten);
+}
+
+const openPort = (portPath) => {
+    console.log('opening port', portPath)
+
+    port = SerialPort(portPath, {
+        baudRate: 9600,
+        autoOpen: false,
+    });
+
+
+    port.open(error => {
+        console.log('Port openend with error', error);
+    });
+}
+
+const closePort = () => {
+    port.close((error) => {
+        console.log('Port closed with error', error)
     });
 }
 
@@ -31,6 +40,8 @@ const getAllSerialPorts = async () => {
 }
 
 module.exports = {
+    openPort: openPort,
+    closePort: closePort,
     sendToSerialPort: sendToSerialPort,
     getAllSerialPorts: getAllSerialPorts,
 }

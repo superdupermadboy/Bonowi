@@ -1,7 +1,7 @@
 // Modules to control application life and create native browser window
 const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
-const { sendToSerialPort } = require('./src/serial')
+const { sendToSerialPort, closePort, openPort } = require('./src/serial')
 
 app.allowRendererProcessReuse = false;
 
@@ -47,4 +47,12 @@ app.on('window-all-closed', function () {
 
 ipcMain.on('update-lamp', (event, data) => {
     sendToSerialPort(data);
+});
+
+ipcMain.on('open-port', (event, data) => {
+  openPort(data);
+});
+
+ipcMain.on('close-port', (event, data) => {
+  closePort();
 });

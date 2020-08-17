@@ -18,16 +18,27 @@ window.addEventListener('DOMContentLoaded', () => {
         })
     
     })
+
+    const openPortButton = document.getElementById('open-port');
+
+    openPortButton.addEventListener('click', () => {
+        comportList = document.getElementById('comport');
+
+        ipcRenderer.send('open-port', comportList.options[comportList.selectedIndex].value);
+    })
+
+    const closePortButton = document.getElementById('close-port');
+
+    closePortButton.addEventListener('click', () => {
+        ipcRenderer.send('close-port');
+    })
+
     const saveButton = document.getElementById('button-save');
 
     saveButton.addEventListener('click', () => {
         const mode = document.getElementById('mode');
-        comportList = document.getElementById('comport');
 
-        ipcRenderer.send('update-lamp', {
-            comport: comportList.options[comportList.selectedIndex].value,
-            mode: mode.options[mode.selectedIndex].value,
-        });
+        ipcRenderer.send('update-lamp', mode.options[mode.selectedIndex].value);
     })
   })
   
