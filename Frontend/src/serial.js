@@ -1,16 +1,19 @@
 const SerialPort = require('serialport');
-const { ipcRenderer, ipcMain } = require('electron');
 
 let port;
 
 const sendToSerialPort = (data) => {
-    console.log('sending this to serial port', data);
-    
-    let portWritten = port.write(data, (error) => {
-        console.log('Written to port with error', error)
-    });
 
-    console.log('written status', portWritten);
+    // TODO port.write returns flase if port.drain should be called. Is this relevant for our use case?
+
+    return new Promise(resolve => port.write(data, error => {
+        if (error) {
+            resolve(false);
+            return;
+        } 
+
+        resolve(true);
+    }));
 }
 
 const openPort = (portPath) => {

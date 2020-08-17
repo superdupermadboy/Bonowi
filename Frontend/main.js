@@ -45,8 +45,18 @@ app.on('window-all-closed', function () {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 
-ipcMain.on('update-lamp', (event, data) => {
-    sendToSerialPort(data);
+ipcMain.on('update-lamp', async (event, data) => {
+  success = await sendToSerialPort(data);
+
+  response = '';
+
+  if (success) {
+    response = 'success-updating-lamp';
+  } else {
+    response = 'error-updating-lamp';
+  }
+
+  event.reply(response, data);
 });
 
 ipcMain.on('open-port', async (event, data) => {
