@@ -1,4 +1,5 @@
 const SerialPort = require('serialport');
+const { ipcRenderer, ipcMain } = require('electron');
 
 let port;
 
@@ -13,23 +14,32 @@ const sendToSerialPort = (data) => {
 }
 
 const openPort = (portPath) => {
-    console.log('opening port', portPath)
-
     port = SerialPort(portPath, {
         baudRate: 9600,
         autoOpen: false,
     });
 
 
-    port.open(error => {
-        console.log('Port openend with error', error);
-    });
+    return new Promise(resolve => port.open(error => {
+        if (error) {
+            resolve(false);
+            return;
+        } 
+
+        resolve(true);
+    }));
 }
 
 const closePort = () => {
-    port.close((error) => {
-        console.log('Port closed with error', error)
-    });
+
+    return new Promise(resolve => port.close((error) => {
+        if (error) {
+            resolve(false);
+            return;
+        } 
+
+        resolve(true);
+    }))
 }
 
 const getAllSerialPorts = async () => {

@@ -49,10 +49,30 @@ ipcMain.on('update-lamp', (event, data) => {
     sendToSerialPort(data);
 });
 
-ipcMain.on('open-port', (event, data) => {
-  openPort(data);
+ipcMain.on('open-port', async (event, data) => {
+  success = await openPort(data);
+
+  response = '';
+
+  if (success) {
+    response = 'success-opening-port';
+  } else {
+    response = 'error-opening-port';
+  }
+
+  event.reply(response);
 });
 
-ipcMain.on('close-port', (event, data) => {
-  closePort();
+ipcMain.on('close-port', async (event, data) => {
+  success = await closePort();
+
+  response = '';
+
+  if (success) {
+    response = 'success-closing-port';
+  } else {
+    response = 'error-closing-port';
+  }
+
+  event.reply(response);
 });

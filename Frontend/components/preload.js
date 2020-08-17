@@ -11,7 +11,9 @@ window.addEventListener('DOMContentLoaded', () => {
         allComports.forEach(comport => {
 
             const listEntry = document.createElement('option');
-            listEntry.appendChild(document.createTextNode(comport.path));
+            listEntry.appendChild(document.createTextNode(
+                `${comport.path} - ${comport.manufacturer}`
+            ));
             listEntry.value = comport.path;
 
             comportList.appendChild(listEntry);
@@ -23,6 +25,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     openPortButton.addEventListener('click', () => {
         comportList = document.getElementById('comport');
+        openPortButton.disabled = true;
 
         ipcRenderer.send('open-port', comportList.options[comportList.selectedIndex].value);
     })
@@ -40,5 +43,22 @@ window.addEventListener('DOMContentLoaded', () => {
 
         ipcRenderer.send('update-lamp', mode.options[mode.selectedIndex].value);
     })
+
+    ipcRenderer.on('success-opening-port', () => {
+        closePortButton.disabled = false;
+    });
+
+    ipcRenderer.on('error-opening-port', () => {
+        openPortButton.disabled = false;
+    });
+
+    ipcRenderer.on('success-closing-port', () => {
+        closePortButton.disabled = true;
+        openPortButton.disabled = false;
+    });
+
+    ipcRenderer.on('error-opening-port', () => {
+        openPortButton.disabled = false;
+    });
   })
   
