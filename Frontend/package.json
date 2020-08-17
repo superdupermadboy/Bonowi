@@ -16,7 +16,8 @@
     "electron-rebuild": "^1.11.0"
   },
   "dependencies": {
-    "serialport": "^9.0.1"
+    "serialport": "^9.0.1",
+    "winston": "^3.3.3"
   },
   "build": {
     "appId": "bonowi.lamp.configuration",
