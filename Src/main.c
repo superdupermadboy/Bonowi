@@ -190,10 +190,10 @@ int main(void)
 			HAL_UART_AbortReceive(&huart2);
 			if(HAL_UART_Receive(&huart2, RxBuf, 1, 100)==HAL_OK){
 				switch(RxBuf[0]){
-					case '1': 	activeMode = programmingMode;	break; 
-					case '2': 	activeMode = strobeMode;			break;
-					case '3': 	activeMode = fourModes;				break;
-					case '4': 	activeMode = slowMode;  			break;
+					case '1': 	activeMode = programmingMode; cap = activeMode.maximumModes; select = 1; 	break; 
+					case '2': 	activeMode = strobeMode;			cap = activeMode.maximumModes; select = 1;	break;
+					case '3': 	activeMode = fourModes;				cap = activeMode.maximumModes; select = 1;	break;
+					case '4': 	activeMode = slowMode;  			cap = activeMode.maximumModes; select = 1;	break;
 				//HAL_UART_Transmit(&huart2, TxBuf, 10, 300);
 				}
 			}
