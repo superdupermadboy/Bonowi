@@ -40,7 +40,7 @@ operationMode standard = 				{1, {0, 10, 0, 0, 0}, 				{0}, 							0};
 operationMode programmingMode = {4, {0, 3, 5, 10, 10}, 				{0, 0, 0, 0, 1}, 20};
 operationMode fourModes = 			{3, {0, 200, 500, 1000, 0}, 	{0}, 							0};
 operationMode strobeMode = 			{4, {0, 200, 500, 1000, 500}, {0, 0, 0, 0, 1},	8};
-operationMode slowMode = 				{3, {0, 200, 1000, 0, 0}, 		{0}, 							8};
+operationMode slowMode = 				{2, {0, 200, 1000, 0, 0}, 		{0}, 							8};
 
 operationMode activeMode;
 uint16_t selectCap;
@@ -277,7 +277,6 @@ int main(void)
 		// The main part of changing the light
 		if ((select_old != select) || (!changeStrobe && activeMode.strobe[select])) {			
 			select_old = select;
-			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 			
 			if (select == 0 && !platineReseted) {				
 
@@ -285,8 +284,18 @@ int main(void)
 					batteryCritical = 1;
 					timeToBlink = 500;
 				} else {
+					HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 					HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
 					select = 1;
+					sConfigOC.Pulse = activeMode.duty[1];
+					HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
+					
+					// This waits for the cpu to get to his speed
+					// Hopefully it stops the flashing when turning it on again
+					uint8_t stopFlashAfterTurningOn = 100;
+					while (stopFlashAfterTurningOn> 0) {
+						stopFlashAfterTurningOn--;
+					}
 				}
 			} else {
 				
@@ -307,7 +316,6 @@ int main(void)
 				}
 				
 				HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
-				
 				HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 			}
 		}
