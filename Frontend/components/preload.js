@@ -78,5 +78,9 @@ window.addEventListener('DOMContentLoaded', () => {
         node.appendChild(text);
         eventList.appendChild(node);
     });
+
+    ipcRenderer.on('controller-response', (event, data) => {
+        console.log(data.toString());
+    });
   })
   

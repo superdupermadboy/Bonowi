@@ -1,6 +1,10 @@
 const SerialPort = require('serialport');
+const Readline = require('@serialport/parser-readline')
 const { createLogger, format, transports } = require('winston');
 const { json, timestamp, combine } = format;
+const { EventEmitter } = require('events');
+
+const emitter = new EventEmitter();
 
 const logger = createLogger({
   level: 'info',
@@ -14,6 +18,12 @@ const logger = createLogger({
 });
 
 let port;
+
+const receiveData = (data) => {
+    emitter.emit('controller-response', data);
+
+    console.log('data yas ', data.toString(), '\n\n');
+}
 
 const sendToSerialPort = (data) => {
 
@@ -48,6 +58,10 @@ const openPort = (portPath) => {
             return;
         } 
 
+        const parser = port.pipe(new Readline({ delimiter: 'S' }));
+
+        parser.on('data', receiveData);
+
         resolve(true);
     }));
 }
@@ -78,4 +92,5 @@ module.exports = {
     closePort: closePort,
     sendToSerialPort: sendToSerialPort,
     getAllSerialPorts: getAllSerialPorts,
+    emitter: emitter,
 }

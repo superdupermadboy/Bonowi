@@ -1,13 +1,15 @@
 // Modules to control application life and create native browser window
 const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
-const { sendToSerialPort, closePort, openPort } = require('./src/serial')
+const { sendToSerialPort, closePort, openPort, emitter } = require('./src/serial')
 
 app.allowRendererProcessReuse = false;
 
+let mainWindow;
+
 function createWindow () {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
     webPreferences: {
@@ -88,3 +90,8 @@ ipcMain.on('close-port', async (event, data) => {
 
   event.reply(response);
 });
+
+emitter.on('controller-response', (data) => {
+  console.log('emittter event got');
+  mainWindow.webContents.send('controller-response', data);
+})
