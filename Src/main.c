@@ -85,9 +85,12 @@ uint32_t batteryVoltage;
 uint16_t batteryCritical;
 uint16_t timeToBlink;
 
-//USART variables
+//USART variables and arrays
 uint8_t RxBuf[1]; 
-uint8_t TxBuf[10]={"Success!"};
+uint8_t TxSuccess[]={"Success!"}; 
+uint8_t TxBadInput[]={"Mode not changed: bad input"};
+uint8_t TxBadReceive[]={"Mode not changed: bad receive"}; 
+uint8_t badinput=0; 
 
 /* USER CODE END PV */
 
@@ -189,19 +192,20 @@ int main(void)
 		while(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
 			HAL_UART_AbortReceive(&huart2);
 			if(HAL_UART_Receive(&huart2, RxBuf, 1, 100)==HAL_OK){
-				if(RxBuf[0]=='1'){
-					activeMode = programmingMode;
+				switch(RxBuf[0]){
+					case '1': 	activeMode = programmingMode; cap = activeMode.maximumModes; select = 1; badinput = 0;	break; 
+					case '2': 	activeMode = strobeMode;			cap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+					case '3': 	activeMode = fourModes;				cap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+					case '4': 	activeMode = slowMode;  			cap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+					default :		badinput = 1;	break;
 				}
-				else if(RxBuf[0]=='2'){
-					activeMode = strobeMode;
+				if(badinput){
+					HAL_UART_Transmit(&huart2, TxBadInput, sizeof(TxBadInput)/sizeof(TxBadInput[0])-1, 100); 
+				}else{
+					HAL_UART_Transmit(&huart2, TxSuccess, sizeof(TxSuccess)/sizeof(TxSuccess[0])-1, 100);
 				}
-				else if(RxBuf[0]=='3'){
-					activeMode = fourModes;
-				} 
-				else if(RxBuf[0]=='4'){
-					activeMode = slowMode;
-				}			
-				//HAL_UART_Transmit(&huart2, TxBuf, 10, 300);
+			}else{
+				HAL_UART_Transmit(&huart2, TxBadReceive, sizeof(TxBadReceive)/sizeof(TxBadReceive[0])-1, 100);
 			}
 		}
 	
