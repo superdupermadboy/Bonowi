@@ -1,6 +1,7 @@
 # User-specific uVision files
 *.uvoptx
 *.uvguix.*
+*.uvprojx
 
 # listing files
 *.lst
