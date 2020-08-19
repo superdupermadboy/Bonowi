@@ -87,9 +87,8 @@ uint16_t timeToBlink;
 
 //USART variables and arrays
 uint8_t RxBuf[1]; 
-uint8_t TxSuccess[]={"Success!"}; 
-uint8_t TxBadInput[]={"Mode not changed: bad input"};
-uint8_t TxBadReceive[]={"Mode not changed: bad receive"}; 
+uint8_t TxSuccess[]={"#Success!"}; 
+uint8_t TxBadInput[]={"#Mode not changed: bad input"};
 uint8_t badinput=0; 
 
 /* USER CODE END PV */
@@ -204,8 +203,6 @@ int main(void)
 				}else{
 					HAL_UART_Transmit(&huart2, TxSuccess, sizeof(TxSuccess)/sizeof(TxSuccess[0])-1, 100);
 				}
-			}else{
-				HAL_UART_Transmit(&huart2, TxBadReceive, sizeof(TxBadReceive)/sizeof(TxBadReceive[0])-1, 100);
 			}
 		}
 	

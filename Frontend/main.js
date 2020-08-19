@@ -92,6 +92,5 @@ ipcMain.on('close-port', async (event, data) => {
 });
 
 emitter.on('controller-response', (data) => {
-  console.log('emittter event got');
   mainWindow.webContents.send('controller-response', data);
 })

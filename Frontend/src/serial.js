@@ -20,9 +20,19 @@ const logger = createLogger({
 let port;
 
 const receiveData = (data) => {
-    emitter.emit('controller-response', data);
+    response  = {
+        error: false,
+        message: data,
+    }
 
-    console.log('data yas ', data.toString(), '\n\n');
+    if (data !== 'Success!') {
+        response.error = true;
+        logger.error(`µController didn't understand the command and returned :${data}`);
+    } else {
+        logger.info('µController successfully changed mode');
+    }
+
+    emitter.emit('controller-response', response);
 }
 
 const sendToSerialPort = (data) => {
@@ -58,7 +68,7 @@ const openPort = (portPath) => {
             return;
         } 
 
-        const parser = port.pipe(new Readline({ delimiter: 'S' }));
+        const parser = port.pipe(new Readline({ delimiter: '#' }));
 
         parser.on('data', receiveData);
 

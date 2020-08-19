@@ -63,24 +63,30 @@ window.addEventListener('DOMContentLoaded', () => {
         openPortButton.disabled = false;
     });
 
+    addToLogList = (text) => {
+        var text = document.createTextNode(`${(new Date()).toLocaleString()} - ${text}`);
+        var node = document.createElement("li");
+        node.appendChild(text);
+        eventList.insertBefore(node, eventList.childNodes[0]);
+    }
+
     const eventList = document.getElementById('event-list');
 
     ipcRenderer.on('success-updating-lamp', (event, data) => {
-        var text = document.createTextNode(`${(new Date()).toLocaleString()} - Successfully send "${data}" to comport.`);
-        var node = document.createElement("li");
-        node.appendChild(text);
-        eventList.appendChild(node);
+        addToLogList(`Successfully send "${data}" to comport.`);
     });
 
     ipcRenderer.on('error-updating-lamp', (event, data) => {
-        var text = document.createTextNode(`${(new Date()).toLocaleString()} - Couldn't send "${data}" to comport.`);
-        var node = document.createElement("li");
-        node.appendChild(text);
-        eventList.appendChild(node);
+        addToLogList(`Couldn't send "${data}" to comport.`);
     });
 
     ipcRenderer.on('controller-response', (event, data) => {
-        console.log(data.toString());
+
+        if (data.error) {
+            addToLogList(`µController didn't understand that message: ${data.message}`)
+        } else {
+            addToLogList(`µController successfully changed mode`);
+        }
     });
   })
   
