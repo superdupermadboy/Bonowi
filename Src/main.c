@@ -36,11 +36,11 @@ typedef struct {
 	uint16_t strobeSpeed;
 } operationMode;
 
-operationMode standard = 				{1, {0, 10, 0, 0, 0}, 				{0}, 							0};
-operationMode programmingMode = {4, {0, 3, 5, 10, 10}, 				{0, 0, 0, 0, 1}, 20};
-operationMode fourModes = 			{3, {0, 200, 500, 1000, 0}, 	{0}, 							0};
-operationMode strobeMode = 			{4, {0, 200, 500, 1000, 500}, {0, 0, 0, 0, 1},	8};
-operationMode slowMode = 				{2, {0, 200, 1000, 0, 0}, 		{0}, 							8};
+//operationMode standard = 				{1, {0, 10, 0, 0, 0}, 				{0}, 							0};
+operationMode programmingMode = {4, {0, 1, 2, 3, 3}, 			{0, 0, 0, 0, 1}, 20};
+operationMode strobeMode = 			{4, {0, 12, 25, 50, 25},	{0, 0, 0, 0, 1},	8};
+operationMode fourModes = 			{3, {0, 12, 25, 50, 0},		{0}, 							0};
+operationMode slowMode = 				{2, {0, 12, 50, 0, 0}, 		{0}, 							8};
 
 operationMode activeMode;
 uint16_t selectCap;
@@ -89,7 +89,7 @@ uint16_t timeToBlink;
 uint8_t RxBuf[1]; 
 uint8_t TxSuccess[]={"#Success!"}; 
 uint8_t TxBadInput[]={"#Mode not changed: bad input"};
-uint8_t badinput=0; 
+uint8_t badinput=3; 
 
 /* USER CODE END PV */
 
@@ -173,10 +173,7 @@ int main(void)
 	strobeOn = 0;
 	changeStrobe = 0;
 	
-	
-	// Comment this out, if processor should reset the whole time
-	// usb_mode = 0;
-	
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -187,25 +184,26 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-		while(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
-			HAL_UART_AbortReceive(&huart2);
-			if(HAL_UART_Receive(&huart2, RxBuf, 1, 100)==HAL_OK){
-				switch(RxBuf[0]){
-					case '1': 	activeMode = programmingMode; selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break; 
-					case '2': 	activeMode = strobeMode;			selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
-					case '3': 	activeMode = fourModes;				selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
-					case '4': 	activeMode = slowMode;  			selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
-					default :		badinput = 1;	break;
-				}
-				if(badinput){
-					HAL_UART_Transmit(&huart2, TxBadInput, sizeof(TxBadInput)/sizeof(TxBadInput[0])-1, 100); 
-				}else{
-					HAL_UART_Transmit(&huart2, TxSuccess, sizeof(TxSuccess)/sizeof(TxSuccess[0])-1, 100);
+			if(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
+				HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
+				while(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
+					HAL_UART_AbortReceive(&huart2);
+					if(HAL_UART_Receive(&huart2, RxBuf, 1,1)== HAL_OK){
+						switch(RxBuf[0]){
+							case '1': 	activeMode = programmingMode; selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break; 
+							case '2': 	activeMode = strobeMode;			selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+							case '3': 	activeMode = fourModes;				selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+							case '4': 	activeMode = slowMode;  			selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+	 						default :		badinput = 1;	break;
+						}
+						if(badinput){
+							HAL_UART_Transmit(&huart2, TxBadInput, sizeof(TxBadInput)/sizeof(TxBadInput[0])-1,100);
+						}else{			
+							HAL_UART_Transmit(&huart2, TxSuccess, sizeof(TxSuccess)/sizeof(TxSuccess[0])-1,100);
+						}
 				}
 			}
 		}
-	
 		if (batteryCritical) {
 			timeToBlink--;
 			
@@ -277,25 +275,16 @@ int main(void)
 		// The main part of changing the light
 		if ((select_old != select) || (!changeStrobe && activeMode.strobe[select])) {			
 			select_old = select;
+			HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 			
-			if (select == 0 && !platineReseted) {				
+			if (select == 0 && !platineReseted) {	
 
 				if (batteryVoltage < 2250) {
 					batteryCritical = 1;
 					timeToBlink = 500;
 				} else {
-					HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 					HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
 					select = 1;
-					sConfigOC.Pulse = activeMode.duty[1];
-					HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
-					
-					// This waits for the cpu to get to his speed
-					// Hopefully it stops the flashing when turning it on again
-					uint8_t stopFlashAfterTurningOn = 100;
-					while (stopFlashAfterTurningOn> 0) {
-						stopFlashAfterTurningOn--;
-					}
 				}
 			} else {
 				
@@ -473,9 +462,9 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1000;
+  htim2.Init.Period = 50;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();
@@ -593,7 +582,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /**
