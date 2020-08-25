@@ -128,10 +128,17 @@ int main(void)
 	}
 	
 	//set the active Mode
-	if(*(uint32_t *)modeaddr==0x11){	activeMode = programmingMode;}
-	if(*(uint32_t *)modeaddr==0x22){	activeMode = strobeMode;}
-	if(*(uint32_t *)modeaddr==0x33){	activeMode = fourModes;}
-	if(*(uint32_t *)modeaddr==0x44){	activeMode = slowMode;}
+	if(*(uint32_t *)modeaddr==0x11){
+		activeMode = programmingMode;
+	} else if(*(uint32_t *)modeaddr==0x22){
+		activeMode = strobeMode;
+	} else if(*(uint32_t *)modeaddr==0x33){
+		activeMode = fourModes;
+	} else if(*(uint32_t *)modeaddr==0x44) {
+		activeMode = slowMode;
+	} else {
+		activeMode = fourModes;
+	}
 	
   /* USER CODE END 1 */
 
@@ -204,7 +211,8 @@ int main(void)
 							case '1': 
 								activeMode = programmingMode; 
 								selectCap = activeMode.maximumModes;
-								select = 1; badinput = 0;	
+								select = 1;
+								badinput = 0;	
 								HAL_FLASH_Unlock();
 								HAL_FLASHEx_DATAEEPROM_Unlock();
 								HAL_FLASHEx_DATAEEPROM_Erase(modeaddr);
