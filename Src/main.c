@@ -91,6 +91,10 @@ uint8_t TxSuccess[]={"#Success!"};
 uint8_t TxBadInput[]={"#Mode not changed: bad input"};
 uint8_t badinput=3; 
 
+//Flash 
+const uint32_t modeaddr=0x8080000; 
+uint8_t firstmode=0x33;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -115,13 +119,19 @@ static void MX_USART2_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	//für erstmaliges Programmieren 
+	if(*(uint32_t *)modeaddr==0x00){
+		HAL_FLASHEx_DATAEEPROM_Unlock();
+		HAL_FLASHEx_DATAEEPROM_Program(FLASH_TYPEPROGRAMDATA_BYTE, modeaddr, firstmode);
+		HAL_FLASHEx_DATAEEPROM_Lock();
+	}
 	
 	//set the active Mode
-	
-	//activeMode = programmingMode;
-	//activeMode = strobeMode;
-	activeMode = fourModes;
-	//activeMode = slowMode;
+	if(*(uint32_t *)modeaddr==0x11){	activeMode = programmingMode;}
+	if(*(uint32_t *)modeaddr==0x22){	activeMode = strobeMode;}
+	if(*(uint32_t *)modeaddr==0x33){	activeMode = fourModes;}
+	if(*(uint32_t *)modeaddr==0x44){	activeMode = slowMode;}
 	
   /* USER CODE END 1 */
 
@@ -184,26 +194,67 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	
 			if(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
 				HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
 				while(HAL_GPIO_ReadPin(BOOT_GPIO_Port, BOOT_Pin) == GPIO_PIN_SET){
 					HAL_UART_AbortReceive(&huart2);
 					if(HAL_UART_Receive(&huart2, RxBuf, 1,1)== HAL_OK){
 						switch(RxBuf[0]){
-							case '1': 	activeMode = programmingMode; selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break; 
-							case '2': 	activeMode = strobeMode;			selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
-							case '3': 	activeMode = fourModes;				selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
-							case '4': 	activeMode = slowMode;  			selectCap = activeMode.maximumModes; select = 1; badinput = 0;	break;
+							case '1': 
+								activeMode = programmingMode; 
+								selectCap = activeMode.maximumModes;
+								select = 1; badinput = 0;	
+								HAL_FLASH_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Erase(modeaddr);
+								HAL_FLASHEx_DATAEEPROM_Program(FLASH_TYPEPROGRAMDATA_BYTE, modeaddr, 0x11);
+								HAL_FLASHEx_DATAEEPROM_Lock();
+								break; 
+							case '2': 	
+								activeMode = strobeMode;	
+								selectCap = activeMode.maximumModes; 
+								select = 1; 
+								badinput = 0;	
+								HAL_FLASH_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Erase(modeaddr);
+								HAL_FLASHEx_DATAEEPROM_Program(FLASH_TYPEPROGRAMDATA_BYTE, modeaddr, 0x22);
+								HAL_FLASHEx_DATAEEPROM_Lock();
+								break;
+							case '3': 	
+								activeMode = fourModes;			
+								selectCap = activeMode.maximumModes; 
+								select = 1; 
+								badinput = 0;	
+								HAL_FLASH_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Erase(modeaddr);
+								HAL_FLASHEx_DATAEEPROM_Program(FLASH_TYPEPROGRAMDATA_BYTE, modeaddr, 0x33);
+								HAL_FLASHEx_DATAEEPROM_Lock();		
+								break;
+							case '4': 	
+								activeMode = slowMode;  
+								selectCap = activeMode.maximumModes; 
+								select = 1; 
+								badinput = 0;
+								HAL_FLASH_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Unlock();
+								HAL_FLASHEx_DATAEEPROM_Erase(modeaddr);
+								HAL_FLASHEx_DATAEEPROM_Program(FLASH_TYPEPROGRAMDATA_BYTE, modeaddr, 0x44);
+								HAL_FLASHEx_DATAEEPROM_Lock();						
+								break;
 	 						default :		badinput = 1;	break;
 						}
 						if(badinput){
 							HAL_UART_Transmit(&huart2, TxBadInput, sizeof(TxBadInput)/sizeof(TxBadInput[0])-1,100);
 						}else{			
 							HAL_UART_Transmit(&huart2, TxSuccess, sizeof(TxSuccess)/sizeof(TxSuccess[0])-1,100);
-						}
+						} 
 				}
 			}
 		}
+			
 		if (batteryCritical) {
 			timeToBlink--;
 			
