@@ -1,0 +1,18 @@
+# User-specific uVision files
+*.uvoptx
+*.uvguix.*
+
+# listing files
+*.lst
+*.htm
+*.map
+
+# Object and Hex Files
+*.axf
+*.crf
+*.d
+*.hex
+*.o
+
+# Other files
+*.dep

@@ -1,0 +1,28 @@
+{
+  "name": "bonowi-lamp-updater",
+  "version": "1.0.0",
+  "description": "Ui for setting lamp parameters",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^9.2.0",
+    "electron-builder": "^22.8.0",
+    "electron-rebuild": "^1.11.0"
+  },
+  "dependencies": {
+    "serialport": "^9.0.1",
+    "winston": "^3.3.3"
+  },
+  "build": {
+    "appId": "bonowi.lamp.configuration",
+    "mac": {
+      "category": "bonowi.lamp.configuration.thirdparty.hardwareconfigurationtool"
+    }
+  }
+}
