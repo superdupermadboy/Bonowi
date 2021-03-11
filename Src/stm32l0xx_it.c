@@ -47,6 +47,8 @@ extern uint16_t cap;
 extern uint16_t selectCap;
 uint16_t select = 0;
 uint16_t debounce = 0;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,7 +68,7 @@ uint16_t debounce = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M0+ Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M0+ Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles Non maskable interrupt.
